@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+
+# Environments
+.env.local
+venv/
+env/
+ENV/
+
+# Database files
+*.db
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Mobile build artifacts & Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.pub-cache/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/key.properties
+*.jks
+*.keystore
+
+# Temporary artifacts
+scratch/
+*.log

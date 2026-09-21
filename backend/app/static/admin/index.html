@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retailza Admin Control Center | Techmasters Innovations</title>
+  <meta name="description" content="Retailza Admin Control Center - Techmasters Innovations Private Limited">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-navbar" id="topNavbar">
+    <div class="nav-brand-section">
+      <div class="brand-logo-wrapper">
+        <div class="brand-icon-gem">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div class="brand-title-group">
+          <div class="brand-title-row">
+            <span class="brand-name">Retailza</span>
+            <span class="brand-tier-tag">ADMIN</span>
+          </div>
+          <div class="parent-company-badge">
+            A sacred initiative by <strong>Techmasters Innovations Private Limited</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Status Indicator -->
+    <div class="system-status-container">
+      <div class="system-health-pill">
+        <span class="pulse-indicator">
+          <span class="pulse-ring"></span>
+          <span class="pulse-dot"></span>
+        </span>
+        <span class="health-label">System Operational</span>
+      </div>
+      <div class="clock-pill" id="liveClockDisplay">--:--:-- IST</div>
+    </div>
+
+    <!-- User Profile & Session Actions -->
+    <div class="nav-actions-section" id="navUserArea">
+      <button class="nav-refresh-btn" onclick="loadAllDashboardData()" title="Refresh Data">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        <span>Refresh</span>
+      </button>
+
+      <div class="user-profile-chip" id="userProfileChip">
+        <div class="user-avatar-circle" id="userAvatar">SA</div>
+        <div class="user-meta">
+          <span class="user-email-text" id="adminEmailDisplay">admin@retailza.com</span>
+          <span class="user-role-label">SUPER ADMIN</span>
+        </div>
+      </div>
+
+      <button class="btn-signout" id="btnSignOut" onclick="handleLogout()" title="Sign Out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Sub-Bar -->
+  <nav class="command-subnav" id="commandSubnav" style="display: none;">
+    <div class="command-subnav-inner">
+      <div class="nav-tabs-group">
+        <button class="nav-tab-item active" id="tabBtn-overview" onclick="switchTab('overview')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span>Overview</span>
+        </button>
+
+        <button class="nav-tab-item" id="tabBtn-stores" onclick="switchTab('stores')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span>Stores</span>
+          <span class="tab-badge-counter" id="tabStoresCount">0</span>
+        </button>
+
+        <button class="nav-tab-item" id="tabBtn-reminders" onclick="switchTab('reminders')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>Renewals</span>
+          <span class="tab-badge-urgent" id="tabExpiringCount">0</span>
+        </button>
+
+        <button class="nav-tab-item" id="tabBtn-broadcast" onclick="switchTab('broadcast')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <span>Announcements</span>
+        </button>
+      </div>
+
+      <div class="nav-search-shortcut">
+        <div class="search-box-pill" onclick="focusSearch()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span class="search-placeholder">Search stores...</span>
+          <kbd class="kbd-badge">Ctrl K</kbd>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Viewport -->
+  <main class="main-content-layout" id="mainDashboard" style="display: none;">
+
+    <!-- TAB 1: OVERVIEW -->
+    <section class="tab-pane active" id="tab-overview">
+      <div class="page-header-row">
+        <div>
+          <h1 class="page-title">Platform Overview</h1>
+          <p class="page-subtitle">Real-time platform financial collections, active licenses, and merchant growth.</p>
+        </div>
+        <div class="page-actions-group">
+          <button class="btn-action-outline" onclick="switchTab('broadcast')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            <span>New Announcement</span>
+          </button>
+          <button class="btn-primary" onclick="switchTab('reminders')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>View Renewals</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 Financial & License KPI Cards -->
+      <div class="kpi-cards-grid">
+        <div class="kpi-luxury-card revenue-theme">
+          <div class="card-accent-bar"></div>
+          <div class="kpi-header-row">
+            <span class="kpi-label">TOTAL REVENUE</span>
+            <div class="kpi-icon-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-stat-value" id="kpiRevenue">₹0.00</div>
+          <div class="kpi-meta-row">
+            <span class="meta-label">All-time payment collections</span>
+          </div>
+        </div>
+
+        <div class="kpi-luxury-card mrr-theme">
+          <div class="card-accent-bar"></div>
+          <div class="kpi-header-row">
+            <span class="kpi-label">MONTHLY RECURRING REVENUE</span>
+            <div class="kpi-icon-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                <polyline points="17 6 23 6 23 12"/>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-stat-value" id="kpiMRR">₹0.00</div>
+          <div class="kpi-meta-row">
+            <span class="meta-label">Current monthly projected run-rate</span>
+          </div>
+        </div>
+
+        <div class="kpi-luxury-card stores-theme">
+          <div class="card-accent-bar"></div>
+          <div class="kpi-header-row">
+            <span class="kpi-label">REGISTERED STORES</span>
+            <div class="kpi-icon-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-stat-value" id="kpiStores">0</div>
+          <div class="kpi-meta-row">
+            <span class="meta-label"><span id="kpiTodaySignups">0</span> registered today • <span id="kpiWeekSignups">0</span> this week</span>
+          </div>
+        </div>
+
+        <div class="kpi-luxury-card active-theme">
+          <div class="card-accent-bar"></div>
+          <div class="kpi-header-row">
+            <span class="kpi-label">ACTIVE LICENSES</span>
+            <div class="kpi-icon-pill">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-stat-value" id="kpiActiveSubs">0</div>
+          <div class="kpi-meta-row">
+            <span class="meta-label">Stores with active subscription access</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription Status Breakdown -->
+      <div class="glass-panel-card" style="margin-top: 24px;">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Subscription Status Breakdown</h2>
+            <p class="panel-subtitle">Live distribution across registered store licenses</p>
+          </div>
+        </div>
+
+        <div class="progress-bar-composite">
+          <div class="progress-segment seg-active" id="barSegActive" style="width: 25%;" title="Active"></div>
+          <div class="progress-segment seg-expiring" id="barSegExpiring" style="width: 25%;" title="Expiring Soon"></div>
+          <div class="progress-segment seg-expired" id="barSegExpired" style="width: 25%;" title="Expired"></div>
+          <div class="progress-segment seg-pending" id="barSegPending" style="width: 25%;" title="Pending"></div>
+        </div>
+
+        <div class="legend-grid">
+          <div class="legend-item">
+            <div class="legend-badge active"></div>
+            <div>
+              <div class="legend-num" id="statActive">0</div>
+              <div class="legend-label">Active</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-badge expiring"></div>
+            <div>
+              <div class="legend-num" id="statExpiring">0</div>
+              <div class="legend-label">Expiring Soon (&le; 3 days)</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-badge expired"></div>
+            <div>
+              <div class="legend-num" id="statExpired">0</div>
+              <div class="legend-label">Expired</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-badge pending"></div>
+            <div>
+              <div class="legend-num" id="statPending">0</div>
+              <div class="legend-label">Pending Activation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: STORES DIRECTORY -->
+    <section class="tab-pane" id="tab-stores" style="display: none;">
+      <div class="glass-panel-card">
+        <div class="table-control-header">
+          <div>
+            <h2 class="section-title">Stores Directory</h2>
+            <p class="section-subtitle">Registered merchant details, subscription status, and billing volumes.</p>
+          </div>
+
+          <div class="table-actions-row">
+            <div class="search-input-wrapper">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="storeSearchInput" placeholder="Search by store name, owner, phone, email, city..." oninput="handleSearchInput(event)">
+              <button class="clear-search-btn" id="btnClearSearch" onclick="clearSearch()" style="display: none;">Clear</button>
+            </div>
+
+            <div class="filter-pills-bar">
+              <button class="filter-pill active" data-filter="ALL" onclick="setFilter('ALL')">All</button>
+              <button class="filter-pill" data-filter="ACTIVE" onclick="setFilter('ACTIVE')">Active</button>
+              <button class="filter-pill" data-filter="EXPIRING" onclick="setFilter('EXPIRING')">Expiring Soon</button>
+              <button class="filter-pill" data-filter="EXPIRED" onclick="setFilter('EXPIRED')">Expired</button>
+              <button class="filter-pill" data-filter="PENDING" onclick="setFilter('PENDING')">Pending</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive-wrapper">
+          <table class="enterprise-table" id="shopsTable">
+            <thead>
+              <tr>
+                <th>STORE</th>
+                <th>OWNER &amp; CONTACT</th>
+                <th>LOCATION</th>
+                <th>REGISTERED</th>
+                <th>STATUS</th>
+                <th>EXPIRES</th>
+                <th>SALES VOLUME</th>
+                <th style="text-align: right;">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="shopsTableBody">
+              <tr>
+                <td colspan="8" class="table-state-cell">Loading stores...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer-bar">
+          <div class="table-counter-text" id="tableResultsCount">Showing 0 stores</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: RENEWALS -->
+    <section class="tab-pane" id="tab-reminders" style="display: none;">
+      <div class="glass-panel-card">
+        <div class="panel-header">
+          <div>
+            <h2 class="section-title">Subscription Renewals</h2>
+            <p class="section-subtitle">Stores requiring subscription renewal or license extension.</p>
+          </div>
+          <button class="btn-primary" onclick="sendBulkReminders()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            <span>Send All Reminders</span>
+          </button>
+        </div>
+
+        <div class="reminders-container" id="remindersList">
+          <div class="table-state-cell">Checking expiring stores...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: ANNOUNCEMENTS -->
+    <section class="tab-pane" id="tab-broadcast" style="display: none;">
+      <div class="broadcast-layout-grid">
+        <!-- Left: Broadcast Composer -->
+        <div class="glass-panel-card">
+          <div class="panel-header">
+            <div>
+              <h2 class="section-title">New Announcement</h2>
+              <p class="section-subtitle">Broadcast messages directly to mobile merchant applications.</p>
+            </div>
+          </div>
+
+          <form id="announcementForm" onsubmit="handleCreateAnnouncement(event)">
+            <div class="form-group">
+              <label for="annTitle">TITLE</label>
+              <input type="text" id="annTitle" class="form-control" required placeholder="Announcement headline">
+            </div>
+
+            <div class="form-group">
+              <label for="annTag">CATEGORY</label>
+              <select id="annTag" class="form-control">
+                <option value="FEATURE">Feature</option>
+                <option value="UPDATE">System Update</option>
+                <option value="OFFER">Special Offer</option>
+                <option value="ALERT">Notice</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="annMessage">MESSAGE</label>
+              <textarea id="annMessage" class="form-control" rows="4" required placeholder="Announcement message text for merchants..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="annUrl">LINK URL (OPTIONAL)</label>
+              <input type="url" id="annUrl" class="form-control" placeholder="https://retailza.com/notice">
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; margin-top: 8px;">
+              <span>Publish Announcement</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right: Published Announcements List -->
+        <div class="glass-panel-card">
+          <div class="panel-header">
+            <div>
+              <h2 class="section-title">Published Announcements</h2>
+              <p class="section-subtitle">Active and past announcements broadcasted to stores.</p>
+            </div>
+          </div>
+
+          <div id="announcementsHistoryList">
+            <div class="table-state-cell">Loading announcements...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Corporate Footer -->
+  <footer class="corporate-footer" id="corporateFooter">
+    <div class="footer-container">
+      <div class="footer-grid">
+        <!-- Col 1: Parent Company Entity & Contact -->
+        <div class="footer-col col-corporate">
+          <h4 class="footer-heading">ENGINEERED &amp; OPERATED BY</h4>
+          <div class="sacred-initiative-badge">A sacred initiative by</div>
+          <div class="company-name-highlight">Techmasters Innovations Private Limited</div>
+          <p class="company-address-text">
+            Headquartered in <strong>Bidar, Karnataka, India.</strong>
+          </p>
+          
+          <div class="footer-contact-box">
+            <div class="contact-row">
+              <span class="contact-label">Contact:</span>
+              <a href="mailto:info@techmastersinnovations.in" class="contact-link">info@techmastersinnovations.in</a>
+              <span class="contact-divider">|</span>
+              <a href="mailto:techmastersinnovations@gmail.com" class="contact-link">techmastersinnovations@gmail.com</a>
+              <button class="btn-copy-email" onclick="copyTextToClipboard('info@techmastersinnovations.in')" title="Copy Email">Copy</button>
+            </div>
+            <div class="contact-row">
+              <span class="contact-label">Support:</span>
+              <a href="mailto:support@covenantnest.techmaster.space" class="contact-link">support@covenantnest.techmaster.space</a>
+              <button class="btn-copy-email" onclick="copyTextToClipboard('support@covenantnest.techmaster.space')" title="Copy Support Email">Copy</button>
+            </div>
+            <div class="corporate-copy-subnote">
+              &copy; 2026 Techmasters Innovations Pvt. Ltd. All rights reserved.
+            </div>
+          </div>
+        </div>
+
+        <!-- Col 2: Platform Resources -->
+        <div class="footer-col col-links">
+          <h4 class="footer-heading">PLATFORM RESOURCES</h4>
+          <ul class="footer-links-list">
+            <li><a href="/docs" target="_blank">API Documentation (/docs)</a></li>
+            <li><a href="/api/health" target="_blank">System Health (/api/health)</a></li>
+            <li><a href="javascript:void(0)" onclick="switchTab('stores')">Stores Directory</a></li>
+            <li><a href="javascript:void(0)" onclick="switchTab('reminders')">Renewals</a></li>
+            <li><a href="javascript:void(0)" onclick="switchTab('broadcast')">Announcements</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Footer Bottom Copyright Bar -->
+      <div class="footer-bottom-bar">
+        <div class="copyright-text">
+          &copy; 2026 <strong>Techmasters Innovations Pvt. Ltd.</strong> All rights reserved.
+        </div>
+        <div class="bottom-system-tags">
+          <span class="tag-system">Headquartered in Bidar, Karnataka, India</span>
+          <span class="tag-system">Build: v1.4.2</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL: SUPER ADMIN AUTHENTICATION -->
+  <div class="modal-backdrop-overlay" id="loginModal">
+    <div class="auth-dialog-card">
+      <div class="dialog-header-area">
+        <div class="auth-logo-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h2 class="dialog-title">Retailza Super Admin</h2>
+        <div class="dialog-company-subtitle">A sacred initiative by <strong>Techmasters Innovations Pvt. Ltd.</strong></div>
+        <p class="dialog-tagline">Sign in to the platform control center</p>
+      </div>
+
+      <!-- Auth Mode Switcher -->
+      <div class="auth-toggle-pill">
+        <button id="authTabPassword" type="button" class="toggle-btn active" onclick="setLoginMode('password')">Password</button>
+        <button id="authTabOtp" type="button" class="toggle-btn" onclick="setLoginMode('otp')">OTP</button>
+      </div>
+
+      <!-- Password Login Form -->
+      <form id="passwordLoginForm" onsubmit="handlePasswordLogin(event)">
+        <div class="form-group">
+          <label for="loginIdentifier">EMAIL OR MOBILE NUMBER</label>
+          <input type="text" id="loginIdentifier" class="form-control" value="admin@retailza.com" required placeholder="admin@retailza.com or mobile number">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">PASSWORD</label>
+          <input type="password" id="loginPassword" class="form-control" value="Admin@Retailza2026" required placeholder="Password">
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; margin-top: 8px;">
+          <span>Sign In</span>
+        </button>
+      </form>
+
+      <!-- OTP Login Form -->
+      <form id="otpLoginForm" onsubmit="handleOtpLogin(event)" style="display: none;">
+        <div class="form-group">
+          <label for="otpIdentifier">EMAIL OR MOBILE NUMBER</label>
+          <input type="text" id="otpIdentifier" class="form-control" value="admin@retailza.com" required placeholder="admin@retailza.com or mobile number">
+        </div>
+        <div id="otpInputGroup" class="form-group" style="display: none;">
+          <label for="otpCode">OTP CODE</label>
+          <input type="text" id="otpCode" class="form-control" maxlength="6" placeholder="Enter OTP">
+          <span class="debug-otp-hint" id="debugOtpHint"></span>
+        </div>
+        <button type="button" id="btnRequestOtp" class="btn-action-outline" style="width: 100%; padding: 12px; justify-content: center; margin-top: 8px;" onclick="requestAdminOtp()">
+          <span>Request OTP</span>
+        </button>
+        <button type="submit" id="btnVerifyOtp" class="btn-primary" style="width: 100%; padding: 12px; margin-top: 8px; display: none;">
+          <span>Verify &amp; Sign In</span>
+        </button>
+      </form>
+
+      <div class="dialog-footer-note">
+        Authorized Platform Personnel • Support: <a href="mailto:support@covenantnest.techmaster.space">support@covenantnest.techmaster.space</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-stack-container"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
