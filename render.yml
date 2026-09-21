@@ -24,7 +24,7 @@ services:
       - key: OTP_EXPIRE_MINUTES
         value: "5"
       - key: DEBUG_MOCK_OTP
-        value: "true"
+        value: "false"
       - key: MOCK_OTP_CODE
         value: "123456"
       - key: SMS_PROVIDER
