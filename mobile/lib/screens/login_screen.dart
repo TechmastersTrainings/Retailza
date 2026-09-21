@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Connect your phone to the same Wi-Fi as your PC to test the app.",
+                    "Default connects directly to Render Cloud (no Wi-Fi needed). You can switch to local PC Wi-Fi if testing offline.",
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 12),
@@ -117,8 +117,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     runSpacing: 6,
                     children: [
                       ActionChip(
+                        avatar: const Icon(Icons.cloud_done, size: 14, color: AppColors.primary),
+                        label: const Text("Cloud Live (Render)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        onPressed: () {
+                          setDialogState(() {
+                            controller.text = ApiConstants.defaultCloudUrl;
+                          });
+                        },
+                      ),
+                      ActionChip(
                         avatar: const Icon(Icons.wifi, size: 14),
-                        label: const Text("Wi-Fi PC (192.168.1.7)", style: TextStyle(fontSize: 11)),
+                        label: const Text("Local Wi-Fi (192.168.1.7)", style: TextStyle(fontSize: 11)),
                         onPressed: () {
                           setDialogState(() {
                             controller.text = "http://192.168.1.7:8000/api";

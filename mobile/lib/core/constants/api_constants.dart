@@ -3,19 +3,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
   static const String defaultPort = "8000";
-  static const String serverUrlPrefKey = "retailza_server_base_url";
+  static const String serverUrlPrefKey = "retailza_server_base_url_v2";
 
-  // Active PC Wi-Fi IP address so physical phones on the same Wi-Fi can connect
+  // Production Render Cloud API (works anywhere on 4G/5G/Wi-Fi)
+  static const String defaultCloudUrl = "https://retailza-api.onrender.com/api";
+
+  // Local development fallbacks
   static const String defaultWifiIp = "192.168.1.7";
   static const String emulatorIp = "10.0.2.2";
 
   static String get defaultHost {
     if (kIsWeb) return "127.0.0.1";
-    // Physical phones on Wi-Fi reach the host PC at defaultWifiIp
     return defaultWifiIp;
   }
 
-  static String baseUrl = "http://$defaultHost:$defaultPort/api";
+  // Live Cloud backend is now default for all devices
+  static String baseUrl = defaultCloudUrl;
 
   static Future<void> loadSavedBaseUrl() async {
     try {
@@ -23,8 +26,12 @@ class ApiConstants {
       final saved = prefs.getString(serverUrlPrefKey);
       if (saved != null && saved.trim().isNotEmpty) {
         baseUrl = saved.trim();
+      } else {
+        baseUrl = defaultCloudUrl;
       }
-    } catch (_) {}
+    } catch (_) {
+      baseUrl = defaultCloudUrl;
+    }
   }
 
   static Future<void> setBaseUrl(String newUrl) async {
