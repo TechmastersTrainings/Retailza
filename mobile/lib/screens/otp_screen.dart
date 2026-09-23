@@ -79,18 +79,22 @@ class _OtpScreenState extends State<OtpScreen> {
     }
 
     // Check if user already has a shop configured
-    if (authProvider.shop == null) {
+    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+    await shopProvider.loadShopData();
+
+    if (!mounted) return;
+
+    final currentShop = authProvider.shop ?? shopProvider.shop;
+    if (currentShop == null) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const ShopSetupScreen()),
         (route) => false,
       );
     } else {
-      // Check subscription
-      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-      await shopProvider.loadShopData();
-
-      if (!mounted) return;
+      if (authProvider.shop == null && shopProvider.shop != null) {
+        authProvider.setShop(shopProvider.shop!);
+      }
 
       if (!shopProvider.isSubscriptionActive) {
         Navigator.pushAndRemoveUntil(

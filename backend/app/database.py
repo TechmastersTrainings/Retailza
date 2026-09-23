@@ -3,6 +3,8 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from backend.app.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 connect_args = {}
 engine_kwargs = {"echo": False}
@@ -14,6 +16,11 @@ elif DATABASE_URL.startswith("mysql"):
     engine_kwargs["pool_recycle"] = 3600
     engine_kwargs["pool_size"] = 10
     engine_kwargs["max_overflow"] = 20
+elif DATABASE_URL.startswith("postgresql"):
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 300
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
 
 engine = create_engine(
     DATABASE_URL,
@@ -23,7 +30,7 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, func
 
 Base = declarative_base()
 
@@ -88,7 +95,7 @@ def init_db():
                     "password": "Admin@Retailza2026"
                 },
                 {
-                    "email": "Techmastersinnovations@gmail.com",
+                    "email": "techmastersinnovations@gmail.com",
                     "mobile_number": "9888888888",
                     "name": "Techmasters Admin",
                     "role": "SUPER_ADMIN",
@@ -96,12 +103,13 @@ def init_db():
                 }
             ]
             for admin_info in default_admins:
+                target_email = admin_info["email"].lower()
                 admin = db.query(User).filter(
-                    (User.email == admin_info["email"]) | (User.mobile_number == admin_info["mobile_number"])
+                    (func.lower(User.email) == target_email) | (User.mobile_number == admin_info["mobile_number"])
                 ).first()
                 if not admin:
                     admin = User(
-                        email=admin_info["email"],
+                        email=target_email,
                         mobile_number=admin_info["mobile_number"],
                         name=admin_info["name"],
                         role="SUPER_ADMIN",
@@ -112,7 +120,7 @@ def init_db():
                     db.commit()
                 else:
                     admin.role = "SUPER_ADMIN"
-                    admin.email = admin_info["email"]
+                    admin.email = target_email
                     admin.hashed_password = hash_password(admin_info["password"])
                     db.commit()
     except Exception as e:

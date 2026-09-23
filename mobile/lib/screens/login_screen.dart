@@ -44,11 +44,25 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String _normalizeIdentifier(String input) {
+    final trimmed = input.trim();
+    if (trimmed.contains('@')) {
+      return trimmed.toLowerCase();
+    }
+    String digits = trimmed.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 12 && digits.startsWith('91')) {
+      digits = digits.substring(2);
+    } else if (digits.length == 11 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    return digits.isNotEmpty ? digits : trimmed;
+  }
+
   Future<void> _handleSendOtp() async {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final identifier = _identifierController.text.trim();
+    final identifier = _normalizeIdentifier(_identifierController.text);
 
     final debugOtp = await authProvider.requestOtp(identifier);
 

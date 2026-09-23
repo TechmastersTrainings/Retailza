@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from backend.app.database import get_db
 from backend.app.models import User, OTPVerification, Shop
 from backend.app.schemas import (
@@ -18,17 +19,30 @@ from backend.app.config import settings
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+def normalize_identifier(identifier: str) -> tuple[str, bool]:
+    """Normalize identifier: strip formatting, handle +91/0 prefixes, and lowercase emails."""
+    cleaned = identifier.strip()
+    if "@" in cleaned:
+        return cleaned.lower(), True
+    # Digits only for phone
+    digits = "".join(filter(str.isdigit, cleaned))
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    return digits if digits else cleaned, False
+
+
 @router.post("/request-otp", status_code=status.HTTP_200_OK)
 def request_otp(payload: OTPRequest, db: Session = Depends(get_db)):
     """Request a 6-digit OTP for mobile number or email address authentication."""
-    target = payload.identifier or payload.mobile_number
-    if not target:
+    raw_target = payload.identifier or payload.mobile_number
+    if not raw_target:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mobile number or email address is required"
         )
-    target = target.strip()
-    is_email = "@" in target
+    target, is_email = normalize_identifier(raw_target)
 
     otp_code = generate_otp()
     expires_at = get_otp_expiry()
@@ -70,14 +84,13 @@ def request_otp(payload: OTPRequest, db: Session = Depends(get_db)):
 @router.post("/verify-otp", response_model=TokenResponse)
 def verify_otp(payload: OTPVerify, db: Session = Depends(get_db)):
     """Verify OTP for mobile or email and issue JWT access and refresh tokens."""
-    target = payload.identifier or payload.mobile_number
-    if not target:
+    raw_target = payload.identifier or payload.mobile_number
+    if not raw_target:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mobile number or email address is required"
         )
-    target = target.strip()
-    is_email = "@" in target
+    target, is_email = normalize_identifier(raw_target)
 
     now = datetime.utcnow()
     otp_record = db.query(OTPVerification).filter(
@@ -98,7 +111,7 @@ def verify_otp(payload: OTPVerify, db: Session = Depends(get_db)):
 
     # Find or create User
     if is_email:
-        user = db.query(User).filter(User.email == target.lower()).first()
+        user = db.query(User).filter(func.lower(User.email) == target.lower()).first()
         if not user:
             user = User(
                 email=target.lower(),
@@ -146,14 +159,11 @@ def verify_otp(payload: OTPVerify, db: Session = Depends(get_db)):
 @router.post("/login-password", response_model=TokenResponse)
 def login_with_password(payload: PasswordLoginRequest, db: Session = Depends(get_db)):
     """Authenticate with Email or Mobile and Password (for Admins and registered users)."""
-    target = payload.identifier.strip()
-    if "@" in target:
-        user = db.query(User).filter(User.email == target.lower()).first()
+    target, is_email = normalize_identifier(payload.identifier)
+    if is_email:
+        user = db.query(User).filter(func.lower(User.email) == target.lower()).first()
     else:
-        cleaned = "".join(filter(str.isdigit, target))
-        if len(cleaned) == 12 and cleaned.startswith("91"):
-            cleaned = cleaned[2:]
-        user = db.query(User).filter(User.mobile_number == cleaned).first()
+        user = db.query(User).filter(User.mobile_number == target).first()
 
     if not user or not user.hashed_password:
         raise HTTPException(

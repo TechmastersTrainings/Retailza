@@ -4,6 +4,7 @@ import '../core/constants/app_colors.dart';
 import '../providers/shop_provider.dart';
 import '../widgets/custom_button.dart';
 import 'subscription_payment_screen.dart';
+import 'main_navigation_screen.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({Key? key}) : super(key: key);
@@ -125,6 +126,24 @@ class SubscriptionScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => const SubscriptionPaymentScreen()),
                   );
                 },
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                    (route) => false,
+                  );
+                },
+                child: const Text(
+                  "Continue to Store (14-Day Free Trial) →",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
