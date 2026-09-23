@@ -5,7 +5,9 @@ import '../models/subscription_model.dart';
 class SubscriptionService {
   Future<SubscriptionModel> getCurrentSubscription() async {
     final response = await ApiClient.get(ApiConstants.currentSubscription);
-    return SubscriptionModel.fromJson(response as Map<String, dynamic>);
+    final map = response as Map<String, dynamic>;
+    await ApiClient.saveCachedSubscription(map);
+    return SubscriptionModel.fromJson(map);
   }
 
   Future<Map<String, dynamic>> createOrder() async {
@@ -26,6 +28,8 @@ class SubscriptionService {
         'razorpay_signature': signature,
       },
     );
-    return SubscriptionModel.fromJson(response as Map<String, dynamic>);
+    final map = response as Map<String, dynamic>;
+    await ApiClient.saveCachedSubscription(map);
+    return SubscriptionModel.fromJson(map);
   }
 }

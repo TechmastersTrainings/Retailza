@@ -16,6 +16,9 @@ class ApiException implements Exception {
 class ApiClient {
   static const String tokenKey = "auth_access_token";
   static const String refreshTokenKey = "auth_refresh_token";
+  static const String userCacheKey = "auth_user_cache";
+  static const String shopCacheKey = "auth_shop_cache";
+  static const String subscriptionCacheKey = "auth_subscription_cache";
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -28,10 +31,76 @@ class ApiClient {
     await prefs.setString(refreshTokenKey, refreshToken);
   }
 
+  static Future<void> saveUserSession({
+    required String accessToken,
+    required String refreshToken,
+    required Map<String, dynamic> userJson,
+    Map<String, dynamic>? shopJson,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tokenKey, accessToken);
+    await prefs.setString(refreshTokenKey, refreshToken);
+    await prefs.setString(userCacheKey, jsonEncode(userJson));
+    if (shopJson != null) {
+      await prefs.setString(shopCacheKey, jsonEncode(shopJson));
+    }
+  }
+
+  static Future<void> saveCachedUser(Map<String, dynamic> userJson) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(userCacheKey, jsonEncode(userJson));
+  }
+
+  static Future<void> saveCachedShop(Map<String, dynamic> shopJson) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(shopCacheKey, jsonEncode(shopJson));
+  }
+
+  static Future<Map<String, dynamic>?> getCachedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(userCacheKey);
+      if (str != null && str.isNotEmpty) {
+        return jsonDecode(str) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getCachedShop() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(shopCacheKey);
+      if (str != null && str.isNotEmpty) {
+        return jsonDecode(str) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<void> saveCachedSubscription(Map<String, dynamic> subscriptionJson) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(subscriptionCacheKey, jsonEncode(subscriptionJson));
+  }
+
+  static Future<Map<String, dynamic>?> getCachedSubscription() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(subscriptionCacheKey);
+      if (str != null && str.isNotEmpty) {
+        return jsonDecode(str) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static Future<void> clearTokens() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(tokenKey);
     await prefs.remove(refreshTokenKey);
+    await prefs.remove(userCacheKey);
+    await prefs.remove(shopCacheKey);
+    await prefs.remove(subscriptionCacheKey);
   }
 
   static Future<Map<String, String>> _headers() async {

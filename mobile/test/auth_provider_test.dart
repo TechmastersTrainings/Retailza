@@ -136,9 +136,44 @@ void main() {
       expect(notified, true);
     });
 
+    test('Session cache restores user and shop on checkAuthStatus', () async {
+      await ApiClient.saveUserSession(
+        accessToken: 'cached_token_xyz',
+        refreshToken: 'cached_refresh_xyz',
+        userJson: {
+          'id': 12,
+          'identifier': '9988776655',
+          'mobile_number': '9988776655',
+          'name': 'Ramesh Kumar',
+          'role': 'OWNER',
+          'is_active': true,
+        },
+        shopJson: {
+          'id': 99,
+          'owner_id': 12,
+          'shop_name': 'Ramesh Kirana Stores',
+          'owner_name': 'Ramesh Kumar',
+          'city': 'Mumbai',
+          'state': 'Maharashtra',
+          'pincode': '400001',
+        },
+      );
+
+      final isAuth = await authProvider.checkAuthStatus();
+      expect(isAuth, true);
+      expect(authProvider.isAuthenticated, true);
+      expect(authProvider.user?.name, 'Ramesh Kumar');
+      expect(authProvider.shop?.shopName, 'Ramesh Kirana Stores');
+      expect(authProvider.shop?.state, 'Maharashtra');
+    });
+
     test('logout clears user, shop, and isAuthenticated state', () async {
-      // Mock existing token in storage
-      await ApiClient.saveTokens('active_session_token', 'refresh_token');
+      // Mock existing token and session in storage
+      await ApiClient.saveUserSession(
+        accessToken: 'active_session_token',
+        refreshToken: 'refresh_token',
+        userJson: {'id': 1, 'identifier': '9876543210', 'name': 'Kirana Owner'},
+      );
 
       // Call logout
       await authProvider.logout();
@@ -147,9 +182,11 @@ void main() {
       expect(authProvider.user, isNull);
       expect(authProvider.shop, isNull);
 
-      // Verify tokens were also wiped from disk
+      // Verify tokens and session cache were wiped from disk
       final tokenAfterLogout = await ApiClient.getToken();
       expect(tokenAfterLogout, isNull);
+      expect(await ApiClient.getCachedUser(), isNull);
+      expect(await ApiClient.getCachedShop(), isNull);
     });
   });
 }

@@ -3,6 +3,7 @@ import '../models/shop_model.dart';
 import '../models/subscription_model.dart';
 import '../services/shop_service.dart';
 import '../services/subscription_service.dart';
+import '../core/network/api_client.dart';
 
 class ShopProvider extends ChangeNotifier {
   final ShopService _shopService = ShopService();
@@ -24,6 +25,21 @@ class ShopProvider extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    // Immediately restore cached shop and subscription if available
+    try {
+      final cachedShop = await ApiClient.getCachedShop();
+      if (cachedShop != null && _shop == null) {
+        _shop = ShopModel.fromJson(cachedShop);
+      }
+      final cachedSub = await ApiClient.getCachedSubscription();
+      if (cachedSub != null && _subscription == null) {
+        _subscription = SubscriptionModel.fromJson(cachedSub);
+      }
+      if (_shop != null || _subscription != null) {
+        notifyListeners();
+      }
+    } catch (_) {}
 
     try {
       _shop = await _shopService.getCurrentShop();
@@ -117,7 +133,15 @@ class ShopProvider extends ChangeNotifier {
     try {
       _subscription = await _subscriptionService.getCurrentSubscription();
       notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      if (_subscription == null) {
+        final cached = await ApiClient.getCachedSubscription();
+        if (cached != null) {
+          _subscription = SubscriptionModel.fromJson(cached);
+          notifyListeners();
+        }
+      }
+    }
   }
 
   Future<Map<String, dynamic>> createSubscriptionOrder() async {

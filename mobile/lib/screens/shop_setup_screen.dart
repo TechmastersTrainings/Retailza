@@ -21,7 +21,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
   final _ownerNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
-  final _stateController = TextEditingController(text: "Madhya Pradesh");
+  final _stateController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _upiIdController = TextEditingController();
 
@@ -164,20 +164,26 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                     Expanded(
                       child: CustomTextField(
                         label: "City (शहर)",
-                        hint: "Indore",
+                        hint: "e.g. Pune, Jaipur",
                         controller: _cityController,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: CustomTextField(
-                        label: "Pincode (पिनकोड)",
-                        hint: "452001",
-                        controller: _pincodeController,
-                        keyboardType: TextInputType.number,
+                        label: "State (राज्य)",
+                        hint: "e.g. Maharashtra",
+                        controller: _stateController,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: "Pincode (पिनकोड)",
+                  hint: "6-digit PIN (e.g. 411001)",
+                  controller: _pincodeController,
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 24),
 

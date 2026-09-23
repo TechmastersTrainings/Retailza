@@ -31,4 +31,17 @@ class SubscriptionModel {
       isActive: json['is_active'] as bool? ?? false,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'shop_id': shopId,
+      'plan_name': planName,
+      'amount': amount,
+      'status': status,
+      'start_date': startDate?.toIso8601String(),
+      'end_date': endDate?.toIso8601String(),
+      'is_active': isActive,
+    };
+  }
 }

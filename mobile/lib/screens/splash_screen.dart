@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
 import 'welcome_screen.dart';
@@ -23,7 +24,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkInitialState() async {
-    await Future.delayed(const Duration(milliseconds: 1400));
+    // Crisp 350ms splash display for snappy, professional launch
+    await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -47,13 +49,15 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // Load shop and subscription
+    // Trigger shop and subscription sync in the background
     final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-    await shopProvider.loadShopData();
+    shopProvider.loadShopData();
 
+    // Check cached subscription status without waiting on slow/sleeping network
+    final cachedSub = await ApiClient.getCachedSubscription();
     if (!mounted) return;
 
-    if (!shopProvider.isSubscriptionActive) {
+    if (cachedSub != null && cachedSub['is_active'] == false) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const SubscriptionScreen()),

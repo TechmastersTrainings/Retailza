@@ -38,6 +38,24 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      // Check cached user and shop first for instant launch
+      final cachedUser = await ApiClient.getCachedUser();
+      if (cachedUser != null) {
+        _user = UserModel.fromJson(cachedUser);
+        final cachedShop = await ApiClient.getCachedShop();
+        if (cachedShop != null) {
+          _shop = ShopModel.fromJson(cachedShop);
+        }
+        _isAuthenticated = true;
+        _isLoading = false;
+        notifyListeners();
+
+        // Refresh in background without blocking or resetting auth on network delay
+        _silentRefresh();
+        return true;
+      }
+
+      // If no cached user, perform full network fetch
       final data = await _authService.getMe();
       if (data['user'] != null) {
         _user = UserModel.fromJson(data['user']);
@@ -49,13 +67,35 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       }
-    } catch (_) {
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains("401") || msg.contains("unauthorized")) {
+        await logout();
+      }
       _isAuthenticated = false;
     }
 
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  void _silentRefresh() async {
+    try {
+      final data = await _authService.getMe();
+      if (data['user'] != null) {
+        _user = UserModel.fromJson(data['user']);
+        if (data['shop'] != null) {
+          _shop = ShopModel.fromJson(data['shop']);
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      if (msg.contains("401") || msg.contains("unauthorized")) {
+        await logout();
+      }
+    }
   }
 
   Future<String?> requestOtp(String identifier) async {
@@ -101,6 +141,7 @@ class AuthProvider extends ChangeNotifier {
 
   void setShop(ShopModel newShop) {
     _shop = newShop;
+    ApiClient.saveCachedShop(newShop.toJson());
     notifyListeners();
   }
 

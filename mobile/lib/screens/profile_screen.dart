@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
 import 'subscription_screen.dart';
 import 'legal_screen.dart';
+import 'welcome_screen.dart';
 import '../core/constants/legal_content.dart';
 import '../widgets/upi_qr_helper.dart';
 
@@ -32,6 +33,132 @@ class ProfileScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  Future<void> _showEditShopDialog(BuildContext context, ShopProvider shopProvider, AuthProvider authProvider) async {
+    final s = shopProvider.shop ?? authProvider.shop;
+    final shopNameCtrl = TextEditingController(text: s?.shopName ?? "");
+    final ownerNameCtrl = TextEditingController(text: s?.ownerName ?? "");
+    final addressCtrl = TextEditingController(text: s?.address ?? "");
+    final cityCtrl = TextEditingController(text: s?.city ?? "");
+    final stateCtrl = TextEditingController(text: s?.state ?? "");
+    final pincodeCtrl = TextEditingController(text: s?.pincode ?? "");
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Edit Store Profile",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: shopNameCtrl,
+                  decoration: const InputDecoration(labelText: "Store Name *"),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ownerNameCtrl,
+                  decoration: const InputDecoration(labelText: "Owner Name *"),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: addressCtrl,
+                  decoration: const InputDecoration(labelText: "Store Address"),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: cityCtrl,
+                        decoration: const InputDecoration(labelText: "City (शहर)"),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: stateCtrl,
+                        decoration: const InputDecoration(labelText: "State (राज्य)"),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: pincodeCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: "Pincode (पिनकोड)"),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      if (shopNameCtrl.text.trim().isEmpty || ownerNameCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Shop and Owner names are required")),
+                        );
+                        return;
+                      }
+                      Navigator.pop(ctx);
+                      final success = await shopProvider.updateShop(
+                        shopName: shopNameCtrl.text.trim(),
+                        ownerName: ownerNameCtrl.text.trim(),
+                        address: addressCtrl.text.trim(),
+                        city: cityCtrl.text.trim(),
+                        state: stateCtrl.text.trim(),
+                        pincode: pincodeCtrl.text.trim(),
+                      );
+                      if (success && shopProvider.shop != null) {
+                        authProvider.setShop(shopProvider.shop!);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Store details updated successfully!"),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -206,13 +333,43 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Store Details",
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: () => _showEditShopDialog(context, shop, auth),
+                        icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.primary),
+                        label: const Text("Edit", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 14),
                   _infoTile("Phone Number", u?.mobileNumber != null ? "+91 ${u!.mobileNumber}" : "Not set"),
                   const Divider(height: 18),
-                  _infoTile("Address", s?.address ?? "Not specified"),
+                  _infoTile("Address", (s?.address != null && s!.address!.trim().isNotEmpty) ? s.address! : "Not specified"),
                   const Divider(height: 18),
-                  _infoTile("City & State", "${s?.city ?? 'Indore'}, ${s?.state ?? 'Madhya Pradesh'}"),
+                  _infoTile(
+                    "City & State",
+                    [
+                      if (s?.city != null && s!.city!.trim().isNotEmpty) s.city!.trim(),
+                      if (s?.state != null && s!.state!.trim().isNotEmpty) s.state!.trim(),
+                    ].isNotEmpty
+                        ? [
+                            if (s?.city != null && s!.city!.trim().isNotEmpty) s.city!.trim(),
+                            if (s?.state != null && s!.state!.trim().isNotEmpty) s.state!.trim(),
+                          ].join(', ')
+                        : "Not specified",
+                  ),
                   const Divider(height: 18),
-                  _infoTile("Pincode", s?.pincode ?? "452001"),
+                  _infoTile("Pincode", (s?.pincode != null && s!.pincode!.trim().isNotEmpty) ? s.pincode! : "Not specified"),
                 ],
               ),
             ),
@@ -235,6 +392,49 @@ class ProfileScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const LegalScreen()),
                 );
               },
+            ),
+            const SizedBox(height: 20),
+
+            // Logout Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.debtRed,
+                  side: const BorderSide(color: AppColors.debtRed, width: 1.2),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text("Logout (लॉग आउट)"),
+                      content: const Text("Are you sure you want to log out of Retailza?"),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.debtRed),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text("Logout"),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    await auth.logout();
+                    if (!context.mounted) return;
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text("Logout (लॉग आउट करें)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
             ),
             const SizedBox(height: 24),
 

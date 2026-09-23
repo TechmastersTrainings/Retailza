@@ -26,7 +26,9 @@ class ShopService {
         'upi_id': upiId,
       },
     );
-    return ShopModel.fromJson(response as Map<String, dynamic>);
+    final map = response as Map<String, dynamic>;
+    await ApiClient.saveCachedShop(map);
+    return ShopModel.fromJson(map);
   }
 
   Future<ShopModel> updateShop({
@@ -50,11 +52,15 @@ class ShopService {
     if (upiId != null) body['upi_id'] = upiId;
 
     final response = await ApiClient.put(ApiConstants.currentShop, body: body);
-    return ShopModel.fromJson(response as Map<String, dynamic>);
+    final map = response as Map<String, dynamic>;
+    await ApiClient.saveCachedShop(map);
+    return ShopModel.fromJson(map);
   }
 
   Future<ShopModel> getCurrentShop() async {
     final response = await ApiClient.get(ApiConstants.currentShop);
-    return ShopModel.fromJson(response as Map<String, dynamic>);
+    final map = response as Map<String, dynamic>;
+    await ApiClient.saveCachedShop(map);
+    return ShopModel.fromJson(map);
   }
 }

@@ -26,14 +26,28 @@ class AuthService {
     final data = response as Map<String, dynamic>;
     final accessToken = data['access_token'] as String;
     final refreshToken = data['refresh_token'] as String;
-    await ApiClient.saveTokens(accessToken, refreshToken);
+    final userJson = data['user'] as Map<String, dynamic>;
+    final shopJson = data['shop'] as Map<String, dynamic>?;
+    await ApiClient.saveUserSession(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      userJson: userJson,
+      shopJson: shopJson,
+    );
 
     return data;
   }
 
   Future<Map<String, dynamic>> getMe() async {
     final response = await ApiClient.get(ApiConstants.me);
-    return response as Map<String, dynamic>;
+    final data = response as Map<String, dynamic>;
+    if (data['user'] != null) {
+      await ApiClient.saveCachedUser(data['user'] as Map<String, dynamic>);
+    }
+    if (data['shop'] != null) {
+      await ApiClient.saveCachedShop(data['shop'] as Map<String, dynamic>);
+    }
+    return data;
   }
 
   Future<void> logout() async {
