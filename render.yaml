@@ -8,9 +8,7 @@ services:
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: retailza-db
-          property: connectionString
+        sync: false
       - key: PYTHON_VERSION
         value: 3.11.11
       - key: APP_NAME
@@ -41,10 +39,3 @@ services:
         value: 6u35s2LHnOuWVlBWF94HP1by
       - key: SUBSCRIPTION_AMOUNT
         value: "49.00"
-
-databases:
-  - name: retailza-db
-    plan: free
-    region: singapore
-    databaseName: retailza
-    user: retailza_user

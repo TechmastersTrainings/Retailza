@@ -3,22 +3,18 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from backend.app.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# Automatically normalize Aiven MySQL URI scheme for SQLAlchemy PyMySQL driver
+if DATABASE_URL.startswith("mysql://"):
+    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 
 connect_args = {}
 engine_kwargs = {"echo": False}
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
-elif DATABASE_URL.startswith("mysql"):
+elif "mysql" in DATABASE_URL:
     engine_kwargs["pool_pre_ping"] = True
     engine_kwargs["pool_recycle"] = 3600
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 20
-elif DATABASE_URL.startswith("postgresql"):
-    engine_kwargs["pool_pre_ping"] = True
-    engine_kwargs["pool_recycle"] = 300
     engine_kwargs["pool_size"] = 10
     engine_kwargs["max_overflow"] = 20
 
