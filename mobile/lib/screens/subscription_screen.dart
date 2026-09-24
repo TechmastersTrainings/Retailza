@@ -113,7 +113,7 @@ class SubscriptionScreen extends StatelessWidget {
                     const Divider(height: 22),
                     _buildFeatureRow("Daily Profit & Sales Analytics", true),
                     const Divider(height: 22),
-                    _buildFeatureRow("Cloud Backup on MySQL 8", true),
+                    _buildFeatureRow("Secure Cloud Database & Auto Backup", true),
                   ],
                 ),
               ),
