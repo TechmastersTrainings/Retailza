@@ -3,6 +3,7 @@ class ShopModel {
   final int ownerId;
   final String shopName;
   final String ownerName;
+  final String? category;
   final String? address;
   final String? city;
   final String? state;
@@ -15,6 +16,7 @@ class ShopModel {
     required this.ownerId,
     required this.shopName,
     required this.ownerName,
+    this.category,
     this.address,
     this.city,
     this.state,
@@ -29,6 +31,7 @@ class ShopModel {
       ownerId: json['owner_id'] as int,
       shopName: json['shop_name'] as String,
       ownerName: json['owner_name'] as String,
+      category: json['category'] as String?,
       address: json['address'] as String?,
       city: json['city'] as String?,
       state: json['state'] as String?,
@@ -44,6 +47,7 @@ class ShopModel {
       'owner_id': ownerId,
       'shop_name': shopName,
       'owner_name': ownerName,
+      'category': category,
       'address': address,
       'city': city,
       'state': state,

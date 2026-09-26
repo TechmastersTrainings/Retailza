@@ -379,11 +379,13 @@ def test_upi_qr_and_paid_unpaid_profit_engine(client):
     assert shop_data["upi_qr_image"] == mock_qr_base64
     assert shop_data["upi_id"] == "radhe@okaxis"
 
-    # Update UPI QR
+    # Update UPI QR & Category
     updated_shop = client.put("/api/shops/current", json={
-        "upi_id": "radhe@paytm"
+        "upi_id": "radhe@paytm",
+        "category": "Electrical"
     }, headers=headers).json()
     assert updated_shop["upi_id"] == "radhe@paytm"
+    assert updated_shop["category"] == "Electrical"
 
     # 2. Add products with purchase_price & selling_price
     # Product 1: Cost 80.00, Sell 100.00 -> Profit per piece = 20.00

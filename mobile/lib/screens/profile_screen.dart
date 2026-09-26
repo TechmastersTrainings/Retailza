@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/shop_categories.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
 import 'subscription_screen.dart';
@@ -43,117 +44,146 @@ class ProfileScreen extends StatelessWidget {
     final cityCtrl = TextEditingController(text: s?.city ?? "");
     final stateCtrl = TextEditingController(text: s?.state ?? "");
     final pincodeCtrl = TextEditingController(text: s?.pincode ?? "");
+    String selectedCategory = s?.category ?? ShopCategories.provisionStore;
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Edit Store Profile",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: shopNameCtrl,
-                  decoration: const InputDecoration(labelText: "Store Name *"),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: ownerNameCtrl,
-                  decoration: const InputDecoration(labelText: "Owner Name *"),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addressCtrl,
-                  decoration: const InputDecoration(labelText: "Store Address"),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: cityCtrl,
-                        decoration: const InputDecoration(labelText: "City (शहर)"),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Edit Store Profile",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: stateCtrl,
-                        decoration: const InputDecoration(labelText: "State (राज्य)"),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: pincodeCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: "Pincode (पिनकोड)"),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () async {
-                      if (shopNameCtrl.text.trim().isEmpty || ownerNameCtrl.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Shop and Owner names are required")),
-                        );
-                        return;
-                      }
-                      Navigator.pop(ctx);
-                      final success = await shopProvider.updateShop(
-                        shopName: shopNameCtrl.text.trim(),
-                        ownerName: ownerNameCtrl.text.trim(),
-                        address: addressCtrl.text.trim(),
-                        city: cityCtrl.text.trim(),
-                        state: stateCtrl.text.trim(),
-                        pincode: pincodeCtrl.text.trim(),
-                      );
-                      if (success && shopProvider.shop != null) {
-                        authProvider.setShop(shopProvider.shop!);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Store details updated successfully!"),
-                              backgroundColor: AppColors.success,
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: shopNameCtrl,
+                    decoration: const InputDecoration(labelText: "Store Name *"),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: ownerNameCtrl,
+                    decoration: const InputDecoration(labelText: "Owner Name *"),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: "Shop Category (दुकान की श्रेणी) *"),
+                    items: ShopCategories.categories.map((cat) {
+                      return DropdownMenuItem<String>(
+                        value: cat.id,
+                        child: Row(
+                          children: [
+                            Icon(cat.icon, color: cat.themeColor, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(cat.displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
                             ),
-                          );
-                        }
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedCategory = val);
                       }
                     },
-                    child: const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: addressCtrl,
+                    decoration: const InputDecoration(labelText: "Store Address"),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: cityCtrl,
+                          decoration: const InputDecoration(labelText: "City (शहर)"),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: stateCtrl,
+                          decoration: const InputDecoration(labelText: "State (राज्य)"),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: pincodeCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: "Pincode (पिनकोड)"),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        if (shopNameCtrl.text.trim().isEmpty || ownerNameCtrl.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Shop and Owner names are required")),
+                          );
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        final success = await shopProvider.updateShop(
+                          shopName: shopNameCtrl.text.trim(),
+                          ownerName: ownerNameCtrl.text.trim(),
+                          category: selectedCategory,
+                          address: addressCtrl.text.trim(),
+                          city: cityCtrl.text.trim(),
+                          state: stateCtrl.text.trim(),
+                          pincode: pincodeCtrl.text.trim(),
+                        );
+                        if (success && shopProvider.shop != null) {
+                          authProvider.setShop(shopProvider.shop!);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Store details updated successfully!"),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text("Save Changes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -170,9 +200,18 @@ class ProfileScreen extends StatelessWidget {
     final u = auth.user;
     final hasQrImage = s?.upiQrImage != null && s!.upiQrImage!.isNotEmpty;
 
+    final shopCatInfo = ShopCategories.getCategoryById(s?.category);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Store & Owner Profile"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: "Edit Store Info",
+            onPressed: () => _showEditShopDialog(context, shop, auth),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -183,14 +222,35 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: AppColors.primary,
-                    child: const Icon(Icons.storefront, size: 40, color: Colors.white),
+                    backgroundColor: shopCatInfo.themeColor.withValues(alpha: 0.15),
+                    child: Icon(shopCatInfo.icon, size: 38, color: shopCatInfo.themeColor),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     s?.shopName ?? "Kirana Store",
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: shopCatInfo.themeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: shopCatInfo.themeColor.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(shopCatInfo.icon, size: 14, color: shopCatInfo.themeColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          shopCatInfo.displayName,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: shopCatInfo.themeColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     "Owner: ${s?.ownerName ?? u?.name ?? 'Shopkeeper'}",
                     style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),

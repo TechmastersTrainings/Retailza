@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/shop_categories.dart';
 import '../models/product_model.dart';
+import '../providers/auth_provider.dart';
+import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/product_card.dart';
 import 'add_product_screen.dart';
@@ -24,7 +28,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   bool _lowStockOnly = false;
   String _selectedCategory = "All";
 
-  final List<String> _categories = [
+  List<String> _categories = [
     "All",
     "General",
     "Grains & Pulses",
@@ -38,6 +42,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void initState() {
     super.initState();
     _lowStockOnly = widget.initialLowStockFilter;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final s = Provider.of<ShopProvider>(context, listen: false).shop ?? Provider.of<AuthProvider>(context, listen: false).shop;
+      final catInfo = ShopCategories.getCategoryById(s?.category);
+      if (mounted) {
+        setState(() {
+          _categories = ["All", "General", ...catInfo.productCategories];
+        });
+      }
+    });
     _fetchProducts();
   }
 

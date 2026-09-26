@@ -74,6 +74,7 @@ class ShopResponse(BaseModel):
     owner_id: int
     shop_name: str
     owner_name: str
+    category: Optional[str] = "Provision Store"
     address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
@@ -103,6 +104,7 @@ class RefreshTokenRequest(BaseModel):
 class ShopCreate(BaseModel):
     shop_name: str = Field(..., min_length=2, max_length=150)
     owner_name: str = Field(..., min_length=2, max_length=100)
+    category: Optional[str] = Field("Provision Store", description="Store category (e.g. Provision Store, Electrical, Furniture, Rice Retail)")
     address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
@@ -114,6 +116,7 @@ class ShopCreate(BaseModel):
 class ShopUpdate(BaseModel):
     shop_name: Optional[str] = None
     owner_name: Optional[str] = None
+    category: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
@@ -342,6 +345,7 @@ class AdminShopItem(BaseModel):
     id: int
     shop_name: str
     owner_name: str
+    category: Optional[str] = "Provision Store"
     mobile_number: Optional[str] = None
     email: Optional[str] = None
     city: Optional[str] = None

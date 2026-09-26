@@ -3,6 +3,7 @@ import 'package:retailza/models/product_model.dart';
 import 'package:retailza/models/customer_model.dart';
 import 'package:retailza/models/announcement_model.dart';
 import 'package:retailza/models/shop_model.dart';
+import 'package:retailza/core/constants/shop_categories.dart';
 
 void main() {
   group('Domain Model Serialization Tests', () {
@@ -81,12 +82,13 @@ void main() {
       expect(announcement.isActive, true);
     });
 
-    test('ShopModel parses store information accurately', () {
+    test('ShopModel parses store information and category accurately', () {
       final json = {
         'id': 12,
         'owner_id': 3,
         'shop_name': 'Lakshmi Kirana Stores',
         'owner_name': 'Lakshmi Devi',
+        'category': 'Electrical',
         'city': 'Bidar',
         'state': 'Karnataka',
         'upi_id': 'lakshmi@upi',
@@ -96,9 +98,32 @@ void main() {
       expect(shop.id, 12);
       expect(shop.shopName, 'Lakshmi Kirana Stores');
       expect(shop.ownerName, 'Lakshmi Devi');
+      expect(shop.category, 'Electrical');
       expect(shop.city, 'Bidar');
       expect(shop.state, 'Karnataka');
       expect(shop.upiId, 'lakshmi@upi');
+
+      final output = shop.toJson();
+      expect(output['category'], 'Electrical');
+    });
+
+    test('ShopCategories returns specific catalog presets based on store type', () {
+      final provisionPresets = ShopCategories.getCatalogFor('Provision Store');
+      expect(provisionPresets.any((p) => p.name.contains('Rice')), isTrue);
+      expect(provisionPresets.any((p) => p.name.contains('Sugar')), isTrue);
+      expect(provisionPresets.any((p) => p.name.contains('Tea')), isTrue);
+
+      final electricalPresets = ShopCategories.getCatalogFor('Electrical');
+      expect(electricalPresets.any((p) => p.name.contains('Switch')), isTrue);
+      expect(electricalPresets.any((p) => p.name.contains('Board')), isTrue);
+      expect(electricalPresets.any((p) => p.name.contains('Wire')), isTrue);
+      expect(electricalPresets.any((p) => p.name.contains('Button')), isTrue);
+
+      final ricePresets = ShopCategories.getCatalogFor('Rice & Grain Retail');
+      expect(ricePresets.any((p) => p.name.contains('Basmati Rice')), isTrue);
+
+      final furniturePresets = ShopCategories.getCatalogFor('Furniture');
+      expect(furniturePresets.any((p) => p.name.contains('Chair')), isTrue);
     });
   });
 }

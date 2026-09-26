@@ -28,6 +28,7 @@ def setup_shop(
         owner_id=current_user.id,
         shop_name=payload.shop_name,
         owner_name=payload.owner_name,
+        category=payload.category or "Provision Store",
         address=payload.address,
         city=payload.city,
         state=payload.state,
@@ -74,6 +75,8 @@ def update_shop(
     if payload.owner_name is not None:
         shop.owner_name = payload.owner_name
         current_user.name = payload.owner_name
+    if payload.category is not None:
+        shop.category = payload.category
     if payload.address is not None:
         shop.address = payload.address
     if payload.city is not None:

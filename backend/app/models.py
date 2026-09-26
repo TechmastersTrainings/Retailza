@@ -47,6 +47,7 @@ class Shop(Base):
     pincode = Column(String(10), nullable=True)
     upi_qr_image = Column(Text, nullable=True)
     upi_id = Column(String(100), nullable=True)
+    category = Column(String(100), default="Provision Store", nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

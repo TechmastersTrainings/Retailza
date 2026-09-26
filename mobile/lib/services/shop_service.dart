@@ -6,6 +6,7 @@ class ShopService {
   Future<ShopModel> setupShop({
     required String shopName,
     required String ownerName,
+    String? category,
     String? address,
     String? city,
     String? state,
@@ -18,6 +19,7 @@ class ShopService {
       body: {
         'shop_name': shopName,
         'owner_name': ownerName,
+        if (category != null) 'category': category,
         'address': address,
         'city': city,
         'state': state,
@@ -34,6 +36,7 @@ class ShopService {
   Future<ShopModel> updateShop({
     String? shopName,
     String? ownerName,
+    String? category,
     String? address,
     String? city,
     String? state,
@@ -44,6 +47,7 @@ class ShopService {
     final Map<String, dynamic> body = {};
     if (shopName != null) body['shop_name'] = shopName;
     if (ownerName != null) body['owner_name'] = ownerName;
+    if (category != null) body['category'] = category;
     if (address != null) body['address'] = address;
     if (city != null) body['city'] = city;
     if (state != null) body['state'] = state;

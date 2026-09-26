@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/shop_categories.dart';
 import '../models/product_model.dart';
+import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/product_card.dart';
 import 'cart_screen.dart';
@@ -22,7 +25,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
   bool _isLoading = false;
   String _selectedCategory = "All";
 
-  final List<String> _categories = [
+  List<String> _categories = [
     "All",
     "General",
     "Grains & Pulses",
@@ -35,6 +38,15 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final s = Provider.of<ShopProvider>(context, listen: false).shop ?? Provider.of<AuthProvider>(context, listen: false).shop;
+      final catInfo = ShopCategories.getCategoryById(s?.category);
+      if (mounted) {
+        setState(() {
+          _categories = ["All", "General", ...catInfo.productCategories];
+        });
+      }
+    });
     _fetchProducts();
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/shop_categories.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
 import '../widgets/custom_button.dart';
@@ -25,6 +26,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
   final _pincodeController = TextEditingController();
   final _upiIdController = TextEditingController();
 
+  String _selectedCategory = ShopCategories.provisionStore;
   String? _upiQrImage;
 
   @override
@@ -65,6 +67,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
     final success = await shopProvider.setupShop(
       shopName: _shopNameController.text.trim(),
       ownerName: _ownerNameController.text.trim(),
+      category: _selectedCategory,
       address: _addressController.text.trim(),
       city: _cityController.text.trim(),
       state: _stateController.text.trim(),
@@ -100,6 +103,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final shopProvider = Provider.of<ShopProvider>(context);
+    final selectedCatInfo = ShopCategories.getCategoryById(_selectedCategory);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -151,6 +155,87 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                   hint: "e.g. Satish Sharma",
                   controller: _ownerNameController,
                   validator: (v) => (v == null || v.trim().isEmpty) ? "Owner name is required" : null,
+                ),
+                const SizedBox(height: 16),
+
+                // Shop Category Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    boxShadow: AppColors.softShadow,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(selectedCatInfo.icon, color: selectedCatInfo.themeColor, size: 22),
+                          const SizedBox(width: 8),
+                          const Text(
+                            "Shop Category (दुकान की श्रेणी) *",
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategory,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          filled: true,
+                          fillColor: AppColors.primarySurface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.cardBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.cardBorder),
+                          ),
+                        ),
+                        items: ShopCategories.categories.map((cat) {
+                          return DropdownMenuItem<String>(
+                            value: cat.id,
+                            child: Row(
+                              children: [
+                                Icon(cat.icon, color: cat.themeColor, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    cat.displayName,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedCategory = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 14, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              "Auto-catalogs your 'Add Product' screen with ${selectedCatInfo.englishName} items.",
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(

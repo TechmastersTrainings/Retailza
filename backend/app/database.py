@@ -63,6 +63,8 @@ def init_db():
                 conn.execute(text("ALTER TABLE shops ADD COLUMN upi_qr_image TEXT;"))
             if "upi_id" not in shop_cols:
                 conn.execute(text("ALTER TABLE shops ADD COLUMN upi_id VARCHAR(100);"))
+            if "category" not in shop_cols:
+                conn.execute(text("ALTER TABLE shops ADD COLUMN category VARCHAR(100) DEFAULT 'Provision Store';"))
 
         # Check sales table
         if "sales" in existing_tables:

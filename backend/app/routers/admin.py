@@ -146,6 +146,7 @@ def get_all_shops(
                 id=s.id,
                 shop_name=s.shop_name,
                 owner_name=s.owner_name,
+                category=s.category or "Provision Store",
                 mobile_number=s.owner.mobile_number if s.owner else None,
                 email=s.owner.email if s.owner else None,
                 city=s.city,

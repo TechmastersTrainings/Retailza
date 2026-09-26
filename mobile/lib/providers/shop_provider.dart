@@ -55,6 +55,7 @@ class ShopProvider extends ChangeNotifier {
   Future<bool> setupShop({
     required String shopName,
     required String ownerName,
+    String? category,
     String? address,
     String? city,
     String? state,
@@ -70,6 +71,7 @@ class ShopProvider extends ChangeNotifier {
       _shop = await _shopService.setupShop(
         shopName: shopName,
         ownerName: ownerName,
+        category: category,
         address: address,
         city: city,
         state: state,
@@ -92,6 +94,7 @@ class ShopProvider extends ChangeNotifier {
   Future<bool> updateShop({
     String? shopName,
     String? ownerName,
+    String? category,
     String? address,
     String? city,
     String? state,
@@ -107,6 +110,7 @@ class ShopProvider extends ChangeNotifier {
       _shop = await _shopService.updateShop(
         shopName: shopName,
         ownerName: ownerName,
+        category: category,
         address: address,
         city: city,
         state: state,
