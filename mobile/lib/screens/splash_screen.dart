@@ -20,6 +20,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // Pre-warm the backend immediately in the background to eliminate cold starts
+    ApiClient.warmUpServer();
     _checkInitialState();
   }
 

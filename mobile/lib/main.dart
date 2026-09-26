@@ -5,11 +5,14 @@ import 'providers/auth_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/cart_provider.dart';
 import 'core/constants/api_constants.dart';
+import 'core/network/api_client.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiConstants.loadSavedBaseUrl();
+  // Asynchronously trigger cloud server wake-up before rendering the first frame
+  ApiClient.warmUpServer();
   runApp(const RetailzaApp());
 }
 

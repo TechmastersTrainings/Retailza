@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from backend.app.database import get_db
@@ -34,7 +34,11 @@ def normalize_identifier(identifier: str) -> tuple[str, bool]:
 
 
 @router.post("/request-otp", status_code=status.HTTP_200_OK)
-def request_otp(payload: OTPRequest, db: Session = Depends(get_db)):
+def request_otp(
+    payload: OTPRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """Request a 6-digit OTP for mobile number or email address authentication."""
     raw_target = payload.identifier or payload.mobile_number
     if not raw_target:
@@ -67,7 +71,8 @@ def request_otp(payload: OTPRequest, db: Session = Depends(get_db)):
         print(f"\n=========================================\n  [RETAILZA EMAIL OTP NOTIFICATION]\n  Email: {target}\n  OTP Code: {otp_code} (Valid for {settings.OTP_EXPIRE_MINUTES} mins)\n=========================================\n")
         message = f"OTP sent successfully to {target}"
     else:
-        send_sms_otp(target, otp_code)
+        # Asynchronously dispatch SMS in the background so API responds in <30ms without carrier delay
+        background_tasks.add_task(send_sms_otp, target, otp_code)
         message = f"OTP sent successfully to +91-{target}"
 
     response_data = {

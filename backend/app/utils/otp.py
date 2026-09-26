@@ -77,7 +77,7 @@ def send_sms_otp(mobile_number: str, otp_code: str) -> bool:
                 "numbers": clean_mobile,
             }
 
-            with httpx.Client(timeout=8.0) as client:
+            with httpx.Client(timeout=3.5) as client:
                 response = client.get(url, headers=headers, params=params)
                 data = response.json() if response.status_code == 200 else {}
 
@@ -91,14 +91,14 @@ def send_sms_otp(mobile_number: str, otp_code: str) -> bool:
                     print(f"==========================================\n")
                     return True
                 else:
-                    logger.error(
-                        f"[Fast2SMS Failure] Status={response.status_code}, Body={response.text}"
-                    )
-                    print(f"\n[Fast2SMS Error] HTTP {response.status_code}: {response.text}\n")
+                    status_val = data.get("status_code") or response.status_code
+                    msg = data.get("message") or response.text
+                    logger.warning(f"[Fast2SMS Account Notice] Status={status_val}, Info={msg}")
+                    print(f"\n[Fast2SMS Notice] Status={status_val}, Message: {msg}")
                     return False
         except Exception as e:
-            logger.error(f"[Fast2SMS Exception] Error sending SMS to {clean_mobile}: {e}")
-            print(f"\n[Fast2SMS Exception] Error: {e}\n")
+            logger.warning(f"[Fast2SMS Dispatch Exception] {e}")
+            print(f"\n[Fast2SMS Dispatch Exception] {e}\n")
             return False
 
     # 4. Fallback if no provider key is configured

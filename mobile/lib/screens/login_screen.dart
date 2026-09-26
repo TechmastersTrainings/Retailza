@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/network/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
@@ -20,11 +22,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final _identifierController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isEmail = false;
+  bool _isWakingUp = false;
+  Timer? _wakeUpTimer;
 
   @override
   void initState() {
     super.initState();
     _identifierController.addListener(_checkInputType);
+    // Pre-warm the backend in the background so it's awake before user clicks Send OTP
+    ApiClient.warmUpServer();
   }
 
   void _checkInputType() {
@@ -39,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _wakeUpTimer?.cancel();
     _identifierController.removeListener(_checkInputType);
     _identifierController.dispose();
     super.dispose();
@@ -64,7 +71,22 @@ class _LoginScreenState extends State<LoginScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final identifier = _normalizeIdentifier(_identifierController.text);
 
-    final debugOtp = await authProvider.requestOtp(identifier);
+    _wakeUpTimer?.cancel();
+    setState(() => _isWakingUp = false);
+    // If request takes longer than 2s (server sleeping), inform the user
+    _wakeUpTimer = Timer(const Duration(milliseconds: 2000), () {
+      if (mounted && authProvider.isLoading) {
+        setState(() => _isWakingUp = true);
+      }
+    });
+
+    String? debugOtp;
+    try {
+      debugOtp = await authProvider.requestOtp(identifier);
+    } finally {
+      _wakeUpTimer?.cancel();
+      if (mounted) setState(() => _isWakingUp = false);
+    }
 
     if (!mounted) return;
 
@@ -293,6 +315,39 @@ class _LoginScreenState extends State<LoginScreen> {
                   isLoading: authProvider.isLoading,
                   onPressed: _handleSendOtp,
                 ),
+                if (authProvider.isLoading && _isWakingUp) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        ),
+                        SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            "☁️ Connecting to cloud server (waking up, please wait)...",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primaryDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 48),
                 Center(
                   child: Column(

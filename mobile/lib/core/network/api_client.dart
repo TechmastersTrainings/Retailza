@@ -115,13 +115,24 @@ class ApiClient {
     return headers;
   }
 
+  /// Fire-and-forget ping to wake up the Render cloud instance from sleep
+  /// Starts spinning up the backend container immediately upon app open
+  static void warmUpServer() {
+    try {
+      final uri = Uri.parse("${ApiConstants.baseUrl}/health");
+      http.get(uri).timeout(const Duration(seconds: 40)).then((_) {}).catchError((_) {});
+    } catch (_) {}
+  }
+
   static Future<dynamic> get(String endpoint, {Map<String, String>? queryParams}) async {
     try {
       var uri = Uri.parse("${ApiConstants.baseUrl}$endpoint");
       if (queryParams != null && queryParams.isNotEmpty) {
         uri = uri.replace(queryParameters: queryParams);
       }
-      final response = await http.get(uri, headers: await _headers());
+      final response = await http
+          .get(uri, headers: await _headers())
+          .timeout(const Duration(seconds: 45));
       return _processResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -132,11 +143,13 @@ class ApiClient {
   static Future<dynamic> post(String endpoint, {Map<String, dynamic>? body}) async {
     try {
       final uri = Uri.parse("${ApiConstants.baseUrl}$endpoint");
-      final response = await http.post(
-        uri,
-        headers: await _headers(),
-        body: body != null ? jsonEncode(body) : null,
-      );
+      final response = await http
+          .post(
+            uri,
+            headers: await _headers(),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 45));
       return _processResponse(response);
     } catch (e) {
       if (e is ApiException) rethrow;

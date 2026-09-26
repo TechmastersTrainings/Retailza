@@ -25,12 +25,14 @@ class OtpScreen extends StatefulWidget {
 
 class _OtpScreenState extends State<OtpScreen> {
   final _otpController = TextEditingController();
+  String? _currentDebugOtp;
 
   @override
   void initState() {
     super.initState();
-    if (widget.debugOtp != null) {
-      _otpController.text = widget.debugOtp!;
+    _currentDebugOtp = widget.debugOtp;
+    if (_currentDebugOtp != null) {
+      _otpController.text = _currentDebugOtp!;
     }
   }
 
@@ -112,6 +114,32 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
+  Future<void> _handleResend() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final newOtp = await authProvider.requestOtp(widget.identifier);
+    if (!mounted) return;
+    if (newOtp != null) {
+      setState(() {
+        _currentDebugOtp = newOtp;
+        _otpController.text = newOtp;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("New OTP auto-filled: $newOtp"),
+          backgroundColor: AppColors.successDark,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? "OTP request sent."),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -156,7 +184,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              if (widget.debugOtp != null) ...[
+              if (_currentDebugOtp != null) ...[
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -171,7 +199,7 @@ class _OtpScreenState extends State<OtpScreen> {
                       const Icon(Icons.check_circle_rounded, color: AppColors.successDark, size: 18),
                       const SizedBox(width: 8),
                       Text(
-                        "Auto-filled Dev OTP: ${widget.debugOtp}",
+                        "Auto-filled Dev OTP: $_currentDebugOtp",
                         style: const TextStyle(
                           color: AppColors.successDark,
                           fontWeight: FontWeight.w700,
@@ -198,7 +226,7 @@ class _OtpScreenState extends State<OtpScreen> {
               const SizedBox(height: 20),
               Center(
                 child: TextButton.icon(
-                  onPressed: () => authProvider.requestOtp(widget.identifier),
+                  onPressed: authProvider.isLoading ? null : _handleResend,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text(
                     "Didn't receive code? Resend OTP",
