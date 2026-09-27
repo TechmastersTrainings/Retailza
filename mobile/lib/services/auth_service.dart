@@ -53,4 +53,12 @@ class AuthService {
   Future<void> logout() async {
     await ApiClient.clearTokens();
   }
+
+  Future<void> deleteAccount() async {
+    try {
+      await ApiClient.delete(ApiConstants.deleteAccount);
+    } finally {
+      await ApiClient.clearTokens();
+    }
+  }
 }

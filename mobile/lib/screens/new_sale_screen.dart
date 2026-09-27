@@ -87,30 +87,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
           "New Bill (नया बिल)",
           style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.2),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary, size: 20),
-              ),
-              tooltip: "Scan Barcode",
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Barcode Scanner active. Use search bar or camera"),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: Column(
         children: [
@@ -128,7 +105,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
                 controller: _searchController,
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: "Search item name or barcode (उदा. चावल, नमक)...",
+                  hintText: "Search item name (उदा. चावल, नमक, स्विच)...",
                   hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted, fontWeight: FontWeight.normal),
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 22),
                   suffixIcon: _searchController.text.isNotEmpty

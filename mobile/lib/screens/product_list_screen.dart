@@ -162,7 +162,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 controller: _searchController,
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: "Search item name or barcode...",
+                  hintText: "Search item name (सामान खोजें)...",
                   hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted, fontWeight: FontWeight.normal),
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 22),
                   suffixIcon: _searchController.text.isNotEmpty

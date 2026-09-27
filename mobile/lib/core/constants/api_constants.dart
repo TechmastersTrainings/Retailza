@@ -48,6 +48,7 @@ class ApiConstants {
   static const String loginPassword = "/auth/login-password";
   static const String refreshToken = "/auth/refresh-token";
   static const String me = "/auth/me";
+  static const String deleteAccount = "/auth/account";
 
   // Shop endpoints
   static const String shopSetup = "/shops/setup";

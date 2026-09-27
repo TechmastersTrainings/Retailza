@@ -150,7 +150,7 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Add items from catalog or scan barcodes to begin billing",
+                      "Add items from store catalog to begin billing",
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                     ),

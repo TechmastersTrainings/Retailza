@@ -466,3 +466,40 @@ def test_upi_qr_and_paid_unpaid_profit_engine(client):
     assert order_data["key_id"] == "rzp_test_TWXn6r1HPxwz0r"
     assert Decimal(str(order_data["amount"])) == Decimal("49.00")
 
+
+def test_delete_user_account_flow(client):
+    """Verify permanent deletion of user account and shop, and that credentials can be reused immediately."""
+    mobile = "9988771122"
+    req_a = client.post("/api/auth/request-otp", json={"mobile_number": mobile})
+    otp_a = req_a.json()["debug_otp"]
+    verify_res = client.post("/api/auth/verify-otp", json={"mobile_number": mobile, "otp_code": otp_a})
+    assert verify_res.status_code == 200
+    token = verify_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Setup shop
+    shop_res = client.post("/api/shops/setup", json={
+        "shop_name": "Temporary Kirana",
+        "owner_name": "Temp Owner",
+        "category": "Provision Store",
+    }, headers=headers)
+    assert shop_res.status_code == 201
+
+    # Delete account
+    del_res = client.delete("/api/auth/account", headers=headers)
+    assert del_res.status_code == 200
+    assert del_res.json()["success"] is True
+
+    # Token is now invalid
+    me_res = client.get("/api/auth/me", headers=headers)
+    assert me_res.status_code == 401
+
+    # Same mobile can re-register freshly
+    re_req = client.post("/api/auth/request-otp", json={"mobile_number": mobile})
+    assert re_req.status_code == 200
+    otp_b = re_req.json()["debug_otp"]
+    re_ver = client.post("/api/auth/verify-otp", json={"mobile_number": mobile, "otp_code": otp_b})
+    assert re_ver.status_code == 200
+    assert re_ver.json()["shop"] is None  # Fresh account with no shop attached
+
+

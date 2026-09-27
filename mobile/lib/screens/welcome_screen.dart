@@ -79,14 +79,16 @@ class WelcomeScreen extends StatelessWidget {
                 iconColor: AppColors.primary,
                 bgColor: AppColors.primarySurface,
                 title: "10-Second Fast Billing",
-                subtitle: "Instant barcode scan & bill receipt with itemized profit capture",
+                hindiTitle: "तेज़ बिलिंग और रसीद",
+                subtitle: "Instant billing receipt with live profit capture",
               ),
               const SizedBox(height: 14),
               _buildFeatureItem(
                 icon: Icons.menu_book_rounded,
                 iconColor: AppColors.debtRed,
                 bgColor: AppColors.debtRedLight,
-                title: "Customer Khata (उधार बहीखाता)",
+                title: "Customer Khata",
+                hindiTitle: "उधार बहीखाता",
                 subtitle: "Track customer balances, send reminders & receive payments",
               ),
               const SizedBox(height: 14),
@@ -95,6 +97,7 @@ class WelcomeScreen extends StatelessWidget {
                 iconColor: AppColors.success,
                 bgColor: AppColors.successLight,
                 title: "Live Inventory & Alerts",
+                hindiTitle: "स्टॉक प्रबंधन",
                 subtitle: "Fractional weights (kg/gram/litre) with low-stock warnings",
               ),
               const Spacer(flex: 2),
@@ -151,6 +154,7 @@ class WelcomeScreen extends StatelessWidget {
     required Color iconColor,
     required Color bgColor,
     required String title,
+    String? hindiTitle,
     required String subtitle,
   }) {
     return Container(
@@ -176,15 +180,30 @@ class WelcomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (hindiTitle != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        "($hindiTitle)",
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   subtitle,
                   style: const TextStyle(

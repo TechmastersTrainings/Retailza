@@ -245,3 +245,36 @@ def get_current_user_profile(
         "user": UserResponse.model_validate(current_user),
         "shop": ShopResponse.model_validate(shop) if shop else None
     }
+
+
+@router.delete("/account", status_code=status.HTTP_200_OK)
+def delete_user_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently delete the user account and associated shop, products, sales,
+    customers, and subscriptions. The user's mobile number and email are
+    completely released, enabling re-registration with the same credentials anytime.
+    """
+    # 1. Clean up any OTP records for this mobile or email
+    targets = [t for t in (current_user.mobile_number, current_user.email) if t]
+    if targets:
+        db.query(OTPVerification).filter(
+            (OTPVerification.identifier.in_(targets)) |
+            (OTPVerification.mobile_number.in_(targets))
+        ).delete(synchronize_session=False)
+
+    # 2. Explicitly remove all user shops (cascades subscriptions, products, sales, khata)
+    shops = db.query(Shop).filter(Shop.owner_id == current_user.id).all()
+    for s in shops:
+        db.delete(s)
+
+    # 3. Permanently remove the user account
+    db.delete(current_user)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "User account and shop data deleted successfully. You can register again anytime."
+    }

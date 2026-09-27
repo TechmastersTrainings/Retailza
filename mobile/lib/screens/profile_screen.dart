@@ -36,6 +36,67 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _handleDeleteAccount(BuildContext context, AuthProvider auth) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: AppColors.debtRed, size: 24),
+            SizedBox(width: 8),
+            Text("Delete Account? (खाता हटाएं)"),
+          ],
+        ),
+        content: const Text(
+          "Are you sure you want to permanently delete your user account and all shop data?\n\n"
+          "• Store profile, inventory, products, sales and khata records will be completely deleted.\n"
+          "• You can register again anytime using the same mobile number or email.",
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.debtRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Delete Permanently"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await auth.deleteAccount();
+      if (!context.mounted) return;
+      if (success) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (route) => false,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account and shop data deleted. You can register again anytime."),
+            backgroundColor: AppColors.textPrimary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(auth.errorMessage ?? "Failed to delete account"),
+            backgroundColor: AppColors.debtRed,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _showEditShopDialog(BuildContext context, ShopProvider shopProvider, AuthProvider authProvider) async {
     final s = shopProvider.shop ?? authProvider.shop;
     final shopNameCtrl = TextEditingController(text: s?.shopName ?? "");
@@ -494,6 +555,20 @@ class ProfileScreen extends StatelessWidget {
                 },
                 icon: const Icon(Icons.logout),
                 label: const Text("Logout (लॉग आउट करें)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.debtRed,
+                ),
+                onPressed: () => _handleDeleteAccount(context, auth),
+                icon: const Icon(Icons.delete_forever_rounded, size: 20),
+                label: const Text(
+                  "Delete Account & Shop Data (खाता और दुकान हटाएं)",
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
               ),
             ),
             const SizedBox(height: 24),

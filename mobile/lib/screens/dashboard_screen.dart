@@ -349,29 +349,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 22),
 
               // Section Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Today's Business (आज का कारोबार)",
+                    "Today's Business",
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
-                      letterSpacing: -0.2,
+                      letterSpacing: -0.3,
                     ),
                   ),
-                  Text(
-                    todayFormatted,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Text(
+                        "आज का कारोबार",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: AppColors.textMuted,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        todayFormatted,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               if (_isLoading)
                 const Center(
@@ -404,14 +427,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  "Total Sales (बिक्री)",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      "Total Sales",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      "कुल बिक्री",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -475,14 +513,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  "Profit (मुनाफा)",
-                                  style: TextStyle(
-                                    color: Color(0xFFA7F3D0),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      "Net Profit",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      "शुद्ध मुनाफा",
+                                      style: TextStyle(
+                                        color: Color(0xFFA7F3D0),
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 Container(
                                   padding: const EdgeInsets.all(4),
@@ -528,28 +581,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.35,
+                  childAspectRatio: 1.25,
                   children: [
                     MetricCard(
-                      title: "Cash Received (नकद)",
+                      title: "Cash Received",
+                      hindiTitle: "नकद बिक्री",
                       value: "₹${_metrics!.todayCashSales.toStringAsFixed(2)}",
                       icon: Icons.payments_rounded,
                       iconColor: AppColors.success,
                     ),
                     MetricCard(
-                      title: "UPI / Online (ऑनलाइन)",
+                      title: "UPI / Online",
+                      hindiTitle: "ऑनलाइन भुगतान",
                       value: "₹${_metrics!.todayUpiSales.toStringAsFixed(2)}",
                       icon: Icons.qr_code_2_rounded,
                       iconColor: AppColors.upiPurple,
                     ),
                     MetricCard(
-                      title: "Khata Given (आज का उधार)",
+                      title: "Khata Given",
+                      hindiTitle: "आज का उधार",
                       value: "₹${_metrics!.todayCreditSales.toStringAsFixed(2)}",
                       icon: Icons.outbox_rounded,
                       iconColor: AppColors.debtRed,
                     ),
                     MetricCard(
-                      title: "Total Khata Due (कुल बाकी)",
+                      title: "Total Khata Due",
+                      hindiTitle: "कुल उधारी बाकी",
                       value: "₹${_metrics!.totalOutstandingCredit.toStringAsFixed(2)}",
                       icon: Icons.account_balance_wallet_rounded,
                       iconColor: AppColors.debtRedDark,

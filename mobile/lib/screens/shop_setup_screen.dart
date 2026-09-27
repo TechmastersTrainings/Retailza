@@ -29,6 +29,28 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
   String _selectedCategory = ShopCategories.provisionStore;
   String? _upiQrImage;
 
+  String get _shopNameHint {
+    switch (_selectedCategory) {
+      case ShopCategories.electrical:
+        return "e.g. Sharma Electricals & Appliances";
+      case ShopCategories.furniture:
+        return "e.g. Royal Furniture Mart";
+      case ShopCategories.riceRetail:
+        return "e.g. Sri Balaji Rice & Grain Depot";
+      case ShopCategories.clothing:
+        return "e.g. Classic Garments & Cloth Store";
+      case ShopCategories.hardware:
+        return "e.g. National Hardware & Sanitary";
+      case ShopCategories.pharmacy:
+        return "e.g. Sanjeevani Medical & Pharmacy";
+      case ShopCategories.generalStore:
+        return "e.g. Anand General Store";
+      case ShopCategories.provisionStore:
+      default:
+        return "e.g. Radhe Krishna Kirana Store";
+    }
+  }
+
   @override
   void dispose() {
     _shopNameController.dispose();
@@ -143,28 +165,14 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                CustomTextField(
-                  label: "Shop Name (दुकान का नाम) *",
-                  hint: "e.g. Radhe Krishna Kirana Store",
-                  controller: _shopNameController,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? "Store name is required" : null,
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: "Owner Name (दुकानदार का नाम) *",
-                  hint: "e.g. Satish Sharma",
-                  controller: _ownerNameController,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? "Owner name is required" : null,
-                ),
-                const SizedBox(height: 16),
 
-                // Shop Category Card
+                // 1. Shop Category Card (Prominently at the top)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    border: Border.all(color: selectedCatInfo.themeColor.withValues(alpha: 0.35), width: 1.5),
                     boxShadow: AppColors.softShadow,
                   ),
                   child: Column(
@@ -172,11 +180,30 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(selectedCatInfo.icon, color: selectedCatInfo.themeColor, size: 22),
-                          const SizedBox(width: 8),
-                          const Text(
-                            "Shop Category (दुकान की श्रेणी) *",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: selectedCatInfo.themeColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(selectedCatInfo.icon, color: selectedCatInfo.themeColor, size: 22),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  "Shop Category (दुकान की श्रेणी) *",
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  "Select your shop type to auto-configure products",
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -221,6 +248,31 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                           }
                         },
                       ),
+                      const SizedBox(height: 10),
+                      // Quick Category Chips
+                      SizedBox(
+                        height: 32,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: ShopCategories.categories.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 6),
+                          itemBuilder: (context, index) {
+                            final cat = ShopCategories.categories[index];
+                            final isSelected = cat.id == _selectedCategory;
+                            return ChoiceChip(
+                              avatar: Icon(cat.icon, size: 14, color: isSelected ? Colors.white : cat.themeColor),
+                              label: Text(
+                                cat.englishName,
+                                style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500),
+                              ),
+                              selected: isSelected,
+                              selectedColor: cat.themeColor,
+                              labelStyle: TextStyle(color: isSelected ? Colors.white : AppColors.textPrimary),
+                              onSelected: (_) => setState(() => _selectedCategory = cat.id),
+                            );
+                          },
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -229,13 +281,29 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                           Expanded(
                             child: Text(
                               "Auto-catalogs your 'Add Product' screen with ${selectedCatInfo.englishName} items.",
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 18),
+
+                // 2. Shop Name & Owner Name
+                CustomTextField(
+                  label: "Shop Name (दुकान का नाम) *",
+                  hint: _shopNameHint,
+                  controller: _shopNameController,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? "Store name is required" : null,
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: "Owner Name (दुकानदार का नाम) *",
+                  hint: "e.g. Satish Sharma",
+                  controller: _ownerNameController,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? "Owner name is required" : null,
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(

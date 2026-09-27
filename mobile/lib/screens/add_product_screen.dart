@@ -20,7 +20,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final ProductService _productService = ProductService();
 
   final _nameController = TextEditingController();
-  final _barcodeController = TextEditingController();
   final _purchasePriceController = TextEditingController(text: "0.00");
   final _sellingPriceController = TextEditingController();
   final _stockController = TextEditingController(text: "10.000");
@@ -71,6 +70,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   void _applyCatalogPreset(CatalogProductPreset preset) {
     setState(() {
+      // Pure product name selection - does not force preset prices onto merchant
       _selectedCatalogItem = preset.name;
       _nameController.text = preset.name;
 
@@ -81,27 +81,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (_categories.contains(preset.defaultCategory)) {
         _selectedCategory = preset.defaultCategory;
       }
-
-      if (preset.defaultSellingPrice > 0) {
-        _sellingPriceController.text = preset.defaultSellingPrice.toStringAsFixed(2);
-      }
-      if (preset.defaultPurchasePrice > 0) {
-        _purchasePriceController.text = preset.defaultPurchasePrice.toStringAsFixed(2);
-      }
-      if (preset.defaultStock > 0) {
-        _stockController.text = preset.defaultStock.toStringAsFixed(3);
-      }
-
-      if (_barcodeController.text.trim().isEmpty) {
-        _barcodeController.text = "${DateTime.now().millisecondsSinceEpoch.toString().substring(3)}";
-      }
     });
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _barcodeController.dispose();
     _purchasePriceController.dispose();
     _sellingPriceController.dispose();
     _stockController.dispose();
@@ -121,7 +106,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       await _productService.createProduct({
         'name': _nameController.text.trim(),
-        if (_barcodeController.text.trim().isNotEmpty) 'barcode': _barcodeController.text.trim(),
         'category': _selectedCategory,
         'unit': _selectedUnit,
         'purchase_price': purchasePrice,
@@ -262,12 +246,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Select an item to automatically autofill name, category, standard unit, and rates.",
+                      "Select an item to automatically fill name, category, and standard measurement unit.",
                       style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 12),
 
-                    // Dropdown for Category Specific Products
+                    // Dropdown for Category Specific Products (Pure Product Name Only)
                     DropdownButtonFormField<String>(
                       value: _selectedCatalogItem,
                       isExpanded: true,
@@ -291,18 +275,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             value: preset.name,
                             child: Row(
                               children: [
-                                Icon(Icons.check_circle_outline, size: 16, color: catInfo.themeColor),
+                                Icon(Icons.circle_outlined, size: 14, color: catInfo.themeColor),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     preset.name,
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                Text(
-                                  "₹${preset.defaultSellingPrice.toStringAsFixed(0)}/${preset.defaultUnit}",
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                                 ),
                               ],
                             ),
@@ -371,36 +351,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 hint: "e.g. ${catalogPresets.first.name}",
                 controller: _nameController,
                 validator: (v) => (v == null || v.trim().isEmpty) ? "Item name is required" : null,
-              ),
-              const SizedBox(height: 16),
-
-              // Barcode with Generate Button
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomTextField(
-                      label: "Barcode (बारकोड)",
-                      hint: "e.g. 890123456789",
-                      controller: _barcodeController,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final autoCode = "${DateTime.now().millisecondsSinceEpoch.toString().substring(3)}";
-                        _barcodeController.text = autoCode;
-                      },
-                      icon: const Icon(Icons.qr_code, size: 16),
-                      label: const Text("Generate"),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                ],
               ),
               const SizedBox(height: 16),
 

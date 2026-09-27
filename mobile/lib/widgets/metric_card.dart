@@ -3,6 +3,7 @@ import '../core/constants/app_colors.dart';
 
 class MetricCard extends StatelessWidget {
   final String title;
+  final String? hindiTitle;
   final String value;
   final IconData icon;
   final Color iconColor;
@@ -13,6 +14,7 @@ class MetricCard extends StatelessWidget {
   const MetricCard({
     Key? key,
     required this.title,
+    this.hindiTitle,
     required this.value,
     required this.icon,
     required this.iconColor,
@@ -78,25 +80,38 @@ class MetricCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
+                    if (hindiTitle != null) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        hindiTitle!,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 4),
                     Text(
                       value,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 17.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                         letterSpacing: -0.2,
