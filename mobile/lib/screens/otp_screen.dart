@@ -31,9 +31,7 @@ class _OtpScreenState extends State<OtpScreen> {
   void initState() {
     super.initState();
     _currentDebugOtp = widget.debugOtp;
-    if (_currentDebugOtp != null) {
-      _otpController.text = _currentDebugOtp!;
-    }
+    // Keep input field empty for real SMS text message entry
   }
 
   @override
@@ -98,19 +96,12 @@ class _OtpScreenState extends State<OtpScreen> {
         authProvider.setShop(shopProvider.shop!);
       }
 
-      if (!shopProvider.isSubscriptionActive) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-          (route) => false,
-        );
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-          (route) => false,
-        );
-      }
+      // Open the store page directly in logged-in state
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        (route) => false,
+      );
     }
   }
 

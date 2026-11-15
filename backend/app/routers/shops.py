@@ -39,12 +39,16 @@ def setup_shop(
     db.add(shop)
     db.flush()
 
-    # Create initial pending subscription for ₹49/month
+    # Create initial 30-day complimentary active trial
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
     subscription = Subscription(
         shop_id=shop.id,
-        plan_name="basic",
+        plan_name="trial",
         amount=settings.SUBSCRIPTION_AMOUNT,
-        status="PENDING"
+        status="ACTIVE",
+        start_date=now,
+        end_date=now + timedelta(days=30)
     )
     db.add(subscription)
 

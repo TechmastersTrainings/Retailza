@@ -20,12 +20,15 @@ def get_subscription(shop: Shop = Depends(get_current_shop), db: Session = Depen
     """Fetch active subscription status and renewal dates."""
     sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).first()
     if not sub:
-        # Create default pending if none exists
+        # Create default complimentary 30-day active trial
+        now = datetime.utcnow()
         sub = Subscription(
             shop_id=shop.id,
-            plan_name="basic",
+            plan_name="trial",
             amount=settings.SUBSCRIPTION_AMOUNT,
-            status="PENDING"
+            status="ACTIVE",
+            start_date=now,
+            end_date=now + timedelta(days=30)
         )
         db.add(sub)
         db.commit()

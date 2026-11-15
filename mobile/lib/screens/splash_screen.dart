@@ -55,18 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final shopProvider = Provider.of<ShopProvider>(context, listen: false);
     shopProvider.loadShopData();
 
-    // Check cached subscription status without waiting on slow/sleeping network
-    final cachedSub = await ApiClient.getCachedSubscription();
-    if (!mounted) return;
-
-    if (cachedSub != null && cachedSub['is_active'] == false) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-      );
-      return;
-    }
-
+    // Directly enter the main store interface
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const MainNavigationScreen()),

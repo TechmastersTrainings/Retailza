@@ -104,13 +104,13 @@ def test_shop_setup_and_subscription_flow(client):
     dup_res = client.post("/api/shops/setup", json=shop_payload, headers=headers)
     assert dup_res.status_code == 400
 
-    # 3. Check Subscription initially PENDING
+    # 3. Check Subscription initially ACTIVE with 30-day trial
     res_sub = client.get("/api/subscriptions/current", headers=headers)
     assert res_sub.status_code == 200
     sub_data = res_sub.json()
-    assert sub_data["status"] == "PENDING"
+    assert sub_data["status"] == "ACTIVE"
     assert Decimal(str(sub_data["amount"])) == Decimal("49.00")
-    assert sub_data["is_active"] is False
+    assert sub_data["is_active"] is True
 
     # 4. Create Subscription Order (₹49)
     res_order = client.post("/api/subscriptions/create-order", headers=headers)

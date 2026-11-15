@@ -229,7 +229,7 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
-                  "TechMasters Innovations Pvt. Ltd.",
+                  "TechMasters Innovations Private Limited",
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

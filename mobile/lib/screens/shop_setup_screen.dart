@@ -8,6 +8,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/upi_qr_helper.dart';
 import 'subscription_screen.dart';
+import 'main_navigation_screen.dart';
 
 class ShopSetupScreen extends StatefulWidget {
   const ShopSetupScreen({Key? key}) : super(key: key);
@@ -118,7 +119,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      MaterialPageRoute(builder: (_) => MainNavigationScreen()),
     );
   }
 
