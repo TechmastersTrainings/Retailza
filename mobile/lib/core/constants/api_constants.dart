@@ -25,7 +25,13 @@ class ApiConstants {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(serverUrlPrefKey);
       if (saved != null && saved.trim().isNotEmpty) {
-        baseUrl = saved.trim();
+        // Auto-migrate legacy dead URL to the active production backend
+        if (saved.contains("retailza-api.onrender.com") && !saved.contains("retailza-api-backend")) {
+          baseUrl = defaultCloudUrl;
+          await prefs.setString(serverUrlPrefKey, defaultCloudUrl);
+        } else {
+          baseUrl = saved.trim();
+        }
       } else {
         baseUrl = defaultCloudUrl;
       }
