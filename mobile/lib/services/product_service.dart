@@ -55,4 +55,21 @@ class ProductService {
     );
     return ProductModel.fromJson(response as Map<String, dynamic>);
   }
+
+  Future<Map<String, dynamic>> uploadBulkProductFile(List<int> fileBytes, String filename) async {
+    final response = await ApiClient.uploadMultipart(
+      "${ApiConstants.products}/bulk/upload",
+      fileBytes,
+      filename,
+    );
+    return response as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> commitBulkProducts(List<Map<String, dynamic>> items) async {
+    final response = await ApiClient.post(
+      "${ApiConstants.products}/bulk/commit",
+      body: {'items': items},
+    );
+    return response as Map<String, dynamic>;
+  }
 }

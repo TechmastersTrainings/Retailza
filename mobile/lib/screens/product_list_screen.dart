@@ -8,12 +8,13 @@ import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/product_card.dart';
 import 'add_product_screen.dart';
+import 'bulk_add_products_screen.dart';
 import 'product_details_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   final bool initialLowStockFilter;
 
-  const ProductListScreen({Key? key, this.initialLowStockFilter = false}) : super(key: key);
+  const ProductListScreen({super.key, this.initialLowStockFilter = false});
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -95,6 +96,32 @@ class _ProductListScreenState extends State<ProductListScreen> {
             icon: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primaryLight.withValues(alpha: 0.4),
+                ),
+              ),
+              child: const Icon(
+                Icons.upload_file_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            tooltip: "Bulk Add (Excel / Word)",
+            onPressed: () async {
+              final res = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BulkAddProductsScreen()),
+              );
+              if (res == true) _fetchProducts();
+            },
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
                 color: _lowStockOnly ? AppColors.warningLight : AppColors.inputFill,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
@@ -116,35 +143,78 @@ class _ProductListScreenState extends State<ProductListScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Bulk Add Button (Excel / Word)
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.primary, width: 1.5),
+              boxShadow: AppColors.softShadow,
             ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          heroTag: null,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          icon: const Icon(Icons.add_box_rounded, color: Colors.white),
-          label: const Text(
-            "Add Product (सामान जोड़ें)",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(28),
+                onTap: () async {
+                  final res = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BulkAddProductsScreen()),
+                  );
+                  if (res == true) _fetchProducts();
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 20),
+                      SizedBox(width: 6),
+                      Text(
+                        "Bulk (Excel/Word)",
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-          onPressed: () async {
-            final res = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddProductScreen()),
-            );
-            if (res == true) _fetchProducts();
-          },
-        ),
+          const SizedBox(width: 10),
+          // Existing Single Add Product Button (DO NOT TOUCH - completely preserved!)
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: FloatingActionButton.extended(
+              heroTag: null,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              icon: const Icon(Icons.add_box_rounded, color: Colors.white, size: 20),
+              label: const Text(
+                "Add Product (सामान)",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              onPressed: () async {
+                final res = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddProductScreen()),
+                );
+                if (res == true) _fetchProducts();
+              },
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [

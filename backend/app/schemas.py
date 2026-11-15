@@ -198,6 +198,41 @@ class ProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# --- Bulk Product Import Schemas ---
+
+class BulkProductItem(BaseModel):
+    name: str = ""
+    barcode: Optional[str] = None
+    category: Optional[str] = "General"
+    unit: str = "piece"
+    purchase_price: Optional[Decimal] = Decimal("0.00")
+    selling_price: Optional[Decimal] = Decimal("0.00")
+    stock_quantity: Optional[Decimal] = Decimal("0.000")
+    min_stock_threshold: Optional[Decimal] = Decimal("5.000")
+    is_valid: bool = True
+    error_message: Optional[str] = None
+    row_number: Optional[int] = None
+
+
+class BulkProductUploadResponse(BaseModel):
+    total_rows: int
+    valid_count: int
+    invalid_count: int
+    filename: str
+    file_type: str  # "excel" or "word"
+    items: List[BulkProductItem]
+
+
+class BulkProductCommitRequest(BaseModel):
+    items: List[BulkProductItem]
+
+
+class BulkProductCommitResponse(BaseModel):
+    imported_count: int
+    message: str
+    products: List[ProductResponse]
+
+
 # --- Inventory & Stock Schemas ---
 
 class StockAdjustment(BaseModel):

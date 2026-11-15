@@ -1,12 +1,21 @@
 from typing import List, Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from backend.app.database import get_db
 from backend.app.models import Shop, Product, StockTransaction
-from backend.app.schemas import ProductCreate, ProductUpdate, ProductResponse
+from backend.app.schemas import (
+    ProductCreate, ProductUpdate, ProductResponse,
+    BulkProductItem, BulkProductUploadResponse, BulkProductCommitRequest, BulkProductCommitResponse
+)
 from backend.app.dependencies import get_current_shop
+from backend.app.utils.bulk_parser import (
+    parse_excel_file, parse_csv_file, parse_word_file, validate_and_normalize_items
+)
+from backend.app.utils.template_generator import (
+    generate_excel_template, generate_word_template
+)
 
 router = APIRouter(prefix="/products", tags=["Products & Catalog"])
 
@@ -83,6 +92,191 @@ def get_product_by_barcode(
         )
 
     return to_product_response(product)
+
+
+# --- Bulk Product Import Endpoints ---
+
+@router.get("/bulk/template/excel")
+def download_excel_template():
+    """Download styled Excel (.xlsx) template for bulk product import."""
+    buf = generate_excel_template()
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=retailza_product_template.xlsx"}
+    )
+
+
+@router.get("/bulk/template/word")
+def download_word_template():
+    """Download styled Word (.docx) template for bulk product import."""
+    buf = generate_word_template()
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": "attachment; filename=retailza_product_template.docx"}
+    )
+
+
+@router.post("/bulk/upload", response_model=BulkProductUploadResponse)
+async def upload_bulk_file(
+    file: UploadFile = File(...),
+    shop: Shop = Depends(get_current_shop),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload and parse Excel (.xlsx, .csv) or Word (.docx) file.
+    Validates all product rows, checks for duplicate barcodes against shop catalog,
+    and returns a preview of items to the customer.
+    """
+    filename = file.filename or ""
+    filename_lower = filename.lower()
+    content = await file.read()
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The uploaded file is empty. Please select a valid Excel or Word file."
+        )
+
+    file_type = "unknown"
+    raw_items = []
+
+    if filename_lower.endswith(".xlsx") or filename_lower.endswith(".xls"):
+        file_type = "excel"
+        try:
+            raw_items = parse_excel_file(content)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to read Excel file: {str(e)}. Please ensure it is a valid .xlsx spreadsheet."
+            )
+    elif filename_lower.endswith(".csv"):
+        file_type = "excel"
+        try:
+            raw_items = parse_csv_file(content)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to read CSV file: {str(e)}."
+            )
+    elif filename_lower.endswith(".docx") or filename_lower.endswith(".doc"):
+        file_type = "word"
+        try:
+            raw_items = parse_word_file(content)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to read Word document: {str(e)}. Please ensure it is a valid .docx document."
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported file format. Please upload an Excel sheet (.xlsx, .csv) or Word document (.docx)."
+        )
+
+    if not raw_items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No product rows found in the uploaded file. Please use our sample template."
+        )
+
+    # Fetch existing active barcodes for this shop
+    existing_barcodes = {
+        p[0] for p in db.query(Product.barcode).filter(
+            Product.shop_id == shop.id,
+            Product.is_active == True,
+            Product.barcode.isnot(None)
+        ).all() if p[0]
+    }
+
+    validated = validate_and_normalize_items(raw_items, existing_barcodes)
+    valid_count = sum(1 for it in validated if it["is_valid"])
+    invalid_count = len(validated) - valid_count
+
+    return BulkProductUploadResponse(
+        total_rows=len(validated),
+        valid_count=valid_count,
+        invalid_count=invalid_count,
+        filename=filename,
+        file_type=file_type,
+        items=[BulkProductItem(**it) for it in validated]
+    )
+
+
+@router.post("/bulk/commit", response_model=BulkProductCommitResponse, status_code=status.HTTP_201_CREATED)
+def commit_bulk_products(
+    payload: BulkProductCommitRequest,
+    shop: Shop = Depends(get_current_shop),
+    db: Session = Depends(get_db)
+):
+    """
+    Commit validated bulk items to the shop's catalog.
+    Creates products and initial stock transactions.
+    """
+    if not payload.items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No items provided to import."
+        )
+
+    # Filter only valid items
+    valid_items = [item for item in payload.items if item.is_valid]
+    if not valid_items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid items to import. Please correct the validation errors first."
+        )
+
+    created_products = []
+    for item in valid_items:
+        # Re-verify barcode uniqueness
+        if item.barcode:
+            exists = db.query(Product).filter(
+                Product.shop_id == shop.id,
+                Product.barcode == item.barcode.strip(),
+                Product.is_active == True
+            ).first()
+            if exists:
+                continue
+
+        prod = Product(
+            shop_id=shop.id,
+            name=item.name.strip(),
+            barcode=item.barcode.strip() if item.barcode else None,
+            category=item.category or "General",
+            unit=item.unit or "piece",
+            purchase_price=item.purchase_price or Decimal("0.00"),
+            selling_price=item.selling_price,
+            stock_quantity=item.stock_quantity or Decimal("0.000"),
+            min_stock_threshold=item.min_stock_threshold or Decimal("5.000"),
+            is_active=True
+        )
+        db.add(prod)
+        db.flush()
+
+        stock_qty = item.stock_quantity or Decimal("0.000")
+        if stock_qty > Decimal("0.000"):
+            tx = StockTransaction(
+                product_id=prod.id,
+                change_quantity=stock_qty,
+                balance_quantity=stock_qty,
+                transaction_type="RESTOCK",
+                reason="Bulk catalog import"
+            )
+            db.add(tx)
+
+        created_products.append(prod)
+
+    db.commit()
+    for p in created_products:
+        db.refresh(p)
+
+    return BulkProductCommitResponse(
+        imported_count=len(created_products),
+        message=f"Successfully imported {len(created_products)} products!",
+        products=[to_product_response(p) for p in created_products]
+    )
 
 
 @router.get("/{product_id}", response_model=ProductResponse)

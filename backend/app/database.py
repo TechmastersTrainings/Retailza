@@ -2,12 +2,21 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from backend.app.config import settings
 
+# Register PyMySQL as standard MySQLdb driver fallback
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 DATABASE_URL = settings.DATABASE_URL
-# Automatically normalize PostgreSQL URI scheme for SQLAlchemy psycopg2 driver
+# Automatically normalize PostgreSQL and MySQL URI schemes for SQLAlchemy drivers
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+elif DATABASE_URL.startswith("mysql://") and not DATABASE_URL.startswith("mysql+"):
+    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 
 connect_args = {}
 engine_kwargs = {"echo": False}
@@ -19,6 +28,12 @@ elif "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
     engine_kwargs["pool_recycle"] = 300
     engine_kwargs["pool_size"] = 10
     engine_kwargs["max_overflow"] = 20
+elif "mysql" in DATABASE_URL:
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 3600
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+    connect_args["charset"] = "utf8mb4"
 
 engine = create_engine(
     DATABASE_URL,
