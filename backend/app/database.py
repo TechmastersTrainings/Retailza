@@ -1,3 +1,4 @@
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from backend.app.config import settings
@@ -10,16 +11,36 @@ except ImportError:
     pass
 
 DATABASE_URL = settings.DATABASE_URL
+connect_args = {}
+engine_kwargs = {"echo": False}
+
 # Automatically normalize PostgreSQL and MySQL URI schemes for SQLAlchemy drivers
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
 elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
-elif DATABASE_URL.startswith("mysql://") and not DATABASE_URL.startswith("mysql+"):
-    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
+elif "mysql" in DATABASE_URL:
+    if DATABASE_URL.startswith("mysql://") and not DATABASE_URL.startswith("mysql+"):
+        DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 
-connect_args = {}
-engine_kwargs = {"echo": False}
+    # Cloud MySQL providers (e.g. Aiven) append ?ssl-mode=REQUIRED or ?sslmode=...
+    # PyMySQL expects ssl as a dictionary in connect_args, not as URL query parameters.
+    try:
+        parsed_db = urlparse(DATABASE_URL)
+        query_params = parse_qs(parsed_db.query)
+        ssl_enabled = False
+        for param in list(query_params.keys()):
+            if param.lower() in ("ssl-mode", "sslmode", "ssl_mode"):
+                mode_val = query_params.pop(param)[0].lower()
+                if mode_val not in ("disabled", "disable", "none", "0", "false"):
+                    ssl_enabled = True
+
+        new_query = urlencode(query_params, doseq=True)
+        DATABASE_URL = urlunparse(parsed_db._replace(query=new_query))
+        if ssl_enabled:
+            connect_args["ssl"] = {"check_hostname": False}
+    except Exception as parse_err:
+        print(f"[database.py] MySQL URL query parse notice: {parse_err}")
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
