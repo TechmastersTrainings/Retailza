@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://retailza-api.onrender.com/api/:path*"
+      "destination": "https://retailza-api-backend.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

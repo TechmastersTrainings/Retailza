@@ -6,7 +6,7 @@ class ApiConstants {
   static const String serverUrlPrefKey = "retailza_server_base_url_v2";
 
   // Production Render Cloud API (works anywhere on 4G/5G/Wi-Fi)
-  static const String defaultCloudUrl = "https://retailza-api.onrender.com/api";
+  static const String defaultCloudUrl = "https://retailza-api-backend.onrender.com/api";
 
   // Local development fallbacks
   static const String defaultWifiIp = "192.168.1.7";
