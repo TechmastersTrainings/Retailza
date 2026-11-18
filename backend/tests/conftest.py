@@ -1,8 +1,19 @@
+import os
+os.environ["TESTING"] = "1"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
+import backend.app.database as db_module
+from backend.app.config import settings
+
+# Force SQLite for test runs so tests are 100% offline and isolated
+settings.DATABASE_URL = "sqlite:///:memory:"
+db_module.DATABASE_URL = "sqlite:///:memory:"
 
 from backend.app.database import Base, get_db
 from backend.app.main import app
@@ -15,6 +26,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+db_module.engine = engine
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

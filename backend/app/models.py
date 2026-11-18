@@ -45,7 +45,7 @@ class Shop(Base):
     city = Column(String(100), nullable=True)
     state = Column(String(100), nullable=True)
     pincode = Column(String(10), nullable=True)
-    upi_qr_image = Column(Text, nullable=True)
+    upi_qr_image = Column(Text(length=16777215), nullable=True)
     upi_id = Column(String(100), nullable=True)
     category = Column(String(100), default="Provision Store", nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

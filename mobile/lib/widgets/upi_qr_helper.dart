@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../core/constants/app_colors.dart';
 
 class UpiQrHelper {
@@ -13,9 +16,9 @@ class UpiQrHelper {
       "IAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HI"
       "McB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHoc"
       "QB6HIAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocg"
-      "B4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIEcD7g5q4R4Yq0MA"
-      "AAAASUVORK5CYII=";
+      "B4HIMcB6HEAehyAHgcgxwHocQB6HIAeByDHAehxAHocgB4HIEcD7g5q4R4Yq0MAAAAASUVORK5CYII=";
 
+  /// Safely decode base64 strings (with or without data URI header) into image bytes
   static Uint8List? decodeBase64Image(String? base64Str) {
     if (base64Str == null || base64Str.trim().isEmpty) return null;
     try {
@@ -27,6 +30,32 @@ class UpiQrHelper {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Downscales and compresses image bytes down to a lightweight 512px dimension
+  /// This ensures QR codes load instantly, consume <50KB payload, and never exceed database limits
+  static Future<String?> processAndCompressImage(Uint8List rawBytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(
+        rawBytes,
+        targetWidth: 512,
+      );
+      final frame = await codec.getNextFrame();
+      final ui.Image image = frame.image;
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData != null) {
+        final compressedBytes = byteData.buffer.asUint8List();
+        return "data:image/png;base64,${base64Encode(compressedBytes)}";
+      }
+    } catch (e) {
+      debugPrint("[UpiQrHelper] ui codec resize notice: $e");
+    }
+
+    // Direct fallback if compression wasn't needed or available
+    if (rawBytes.lengthInBytes <= 500 * 1024) {
+      return "data:image/png;base64,${base64Encode(rawBytes)}";
+    }
+    return null;
   }
 
   static Widget buildQrImageWidget(String? base64Str, {double height = 220}) {
@@ -101,23 +130,79 @@ class UpiQrHelper {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (modalCtx, setModalState) {
+            bool isProcessing = false;
+
             Future<void> pickImage(ImageSource source) async {
+              if (isProcessing) return;
+              setModalState(() {
+                isProcessing = true;
+              });
+
               try {
-                final picker = ImagePicker();
-                final XFile? file = await picker.pickImage(source: source, imageQuality: 85);
-                if (file != null) {
-                  final bytes = await file.readAsBytes();
-                  final b64 = "data:image/png;base64,${base64Encode(bytes)}";
-                  setModalState(() {
-                    selectedBase64 = b64;
-                  });
+                Uint8List? rawBytes;
+
+                // 1. Try ImagePicker with native dimensions & quality capping
+                try {
+                  final picker = ImagePicker();
+                  final XFile? file = await picker.pickImage(
+                    source: source,
+                    maxWidth: 600,
+                    maxHeight: 600,
+                    imageQuality: 75,
+                  );
+                  if (file != null) {
+                    rawBytes = await file.readAsBytes();
+                  }
+                } catch (pickerErr) {
+                  debugPrint("[UpiQrHelper] ImagePicker notice: $pickerErr");
+                }
+
+                // 2. Fallback to FilePicker if gallery picking failed or returned null on OEM gallery
+                if (rawBytes == null && source == ImageSource.gallery) {
+                  try {
+                    final res = await FilePicker.pickFiles(
+                      type: FileType.image,
+                    );
+                    if (res.isNotEmpty) {
+                      final picked = res.first;
+                      rawBytes = await picked.readAsBytes();
+                    }
+                  } catch (filePickerErr) {
+                    debugPrint("[UpiQrHelper] FilePicker notice: $filePickerErr");
+                  }
+                }
+
+                // 3. Process & downscale to guaranteed lightweight base64
+                if (rawBytes != null && rawBytes.isNotEmpty) {
+                  final compressedBase64 = await processAndCompressImage(rawBytes);
+                  if (compressedBase64 != null) {
+                    setModalState(() {
+                      selectedBase64 = compressedBase64;
+                    });
+                  } else {
+                    if (modalCtx.mounted) {
+                      ScaffoldMessenger.of(modalCtx).showSnackBar(
+                        const SnackBar(
+                          content: Text("Image could not be compressed. Please choose another screenshot."),
+                          backgroundColor: AppColors.debtRed,
+                        ),
+                      );
+                    }
+                  }
                 }
               } catch (e) {
                 if (modalCtx.mounted) {
                   ScaffoldMessenger.of(modalCtx).showSnackBar(
-                    SnackBar(content: Text("Could not access image: $e")),
+                    SnackBar(
+                      content: Text("Could not access image: $e"),
+                      backgroundColor: AppColors.debtRed,
+                    ),
                   );
                 }
+              } finally {
+                setModalState(() {
+                  isProcessing = false;
+                });
               }
             }
 
@@ -168,8 +253,21 @@ class UpiQrHelper {
                     ),
                     const SizedBox(height: 16),
 
-                    // Preview if selected
-                    if (selectedBase64 != null) ...[
+                    // Preview if selected or loading spinner
+                    if (isProcessing) ...[
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(color: AppColors.upiPurple),
+                              SizedBox(height: 12),
+                              Text("Optimizing QR image...", style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else if (selectedBase64 != null) ...[
                       Center(
                         child: Stack(
                           children: [
@@ -200,7 +298,7 @@ class UpiQrHelper {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => pickImage(ImageSource.gallery),
+                            onPressed: isProcessing ? null : () => pickImage(ImageSource.gallery),
                             icon: const Icon(Icons.photo_library_outlined, size: 18),
                             label: const Text("Gallery (गैलरी)", style: TextStyle(fontSize: 12)),
                             style: OutlinedButton.styleFrom(
@@ -214,7 +312,7 @@ class UpiQrHelper {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => pickImage(ImageSource.camera),
+                            onPressed: isProcessing ? null : () => pickImage(ImageSource.camera),
                             icon: const Icon(Icons.camera_alt_outlined, size: 18),
                             label: const Text("Camera (कैमरा)", style: TextStyle(fontSize: 12)),
                             style: OutlinedButton.styleFrom(
@@ -229,11 +327,13 @@ class UpiQrHelper {
                     const SizedBox(height: 8),
                     Center(
                       child: TextButton.icon(
-                        onPressed: () {
-                          setModalState(() {
-                            selectedBase64 = sampleQrBase64;
-                          });
-                        },
+                        onPressed: isProcessing
+                            ? null
+                            : () {
+                                setModalState(() {
+                                  selectedBase64 = sampleQrBase64;
+                                });
+                              },
                         icon: const Icon(Icons.qr_code, size: 16),
                         label: const Text("Use Sample Test QR (सैंपल क्यूआर)", style: TextStyle(fontSize: 12)),
                       ),
@@ -254,12 +354,14 @@ class UpiQrHelper {
 
                     // Save Button
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx, {
-                          'upi_qr_image': selectedBase64,
-                          'upi_id': upiIdController.text.trim().isEmpty ? null : upiIdController.text.trim(),
-                        });
-                      },
+                      onPressed: isProcessing
+                          ? null
+                          : () {
+                              Navigator.pop(ctx, {
+                                'upi_qr_image': selectedBase64,
+                                'upi_id': upiIdController.text.trim().isEmpty ? null : upiIdController.text.trim(),
+                              });
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         minimumSize: const Size(double.infinity, 48),

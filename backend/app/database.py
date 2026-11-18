@@ -1,3 +1,4 @@
+import os
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -10,7 +11,9 @@ try:
 except ImportError:
     pass
 
-DATABASE_URL = settings.DATABASE_URL
+DATABASE_URL = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
+if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("TESTING"):
+    DATABASE_URL = "sqlite:///:memory:"
 connect_args = {}
 engine_kwargs = {"echo": False}
 
@@ -96,7 +99,12 @@ def init_db():
         if "shops" in existing_tables:
             shop_cols = [c["name"] for c in inspector.get_columns("shops")]
             if "upi_qr_image" not in shop_cols:
-                conn.execute(text("ALTER TABLE shops ADD COLUMN upi_qr_image TEXT;"))
+                conn.execute(text("ALTER TABLE shops ADD COLUMN upi_qr_image LONGTEXT;" if "mysql" in DATABASE_URL else "ALTER TABLE shops ADD COLUMN upi_qr_image TEXT;"))
+            elif "mysql" in DATABASE_URL:
+                try:
+                    conn.execute(text("ALTER TABLE shops MODIFY COLUMN upi_qr_image LONGTEXT;"))
+                except Exception as mod_err:
+                    print(f"[init_db] upi_qr_image modify notice: {mod_err}")
             if "upi_id" not in shop_cols:
                 conn.execute(text("ALTER TABLE shops ADD COLUMN upi_id VARCHAR(100);"))
             if "category" not in shop_cols:
