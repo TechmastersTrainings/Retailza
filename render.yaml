@@ -33,14 +33,10 @@ services:
         value: fast2sms
       - key: FAST2SMS_API_KEY
         value: hXIfLmtDixvHZy1VnkFojqzBs0Ju3EKe6MAG9QgcCTlr7ap4wdpG2QYqSEsaCzPojAei06hb34fNgKdl
-      # UPI Gateway subscription payments: set values in the Render dashboard.
-      - key: UPI_GATEWAY_BASE_URL
-        sync: false
-      - key: UPI_GATEWAY_API_KEY
-        sync: false
-      - key: UPI_GATEWAY_API_SECRET
-        sync: false
-      - key: UPI_GATEWAY_WEBHOOK_SECRET
-        sync: false
+      # Native Standalone UPI Payments (Direct to sachin.pratik97-1@okaxis)
+      - key: ADMIN_UPI_ID
+        value: sachin.pratik97-1@okaxis
+      - key: ADMIN_UPI_NAME
+        value: Retailza
       - key: SUBSCRIPTION_AMOUNT
         value: "49.00"

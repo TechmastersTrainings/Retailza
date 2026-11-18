@@ -270,7 +270,7 @@ function updateUserDisplay(user) {
 
 function switchTab(tabId) {
   document.querySelectorAll('.nav-tab-item').forEach(btn => btn.classList.remove('active'));
-  ['overview', 'stores', 'reminders', 'broadcast'].forEach(id => {
+  ['overview', 'stores', 'reminders', 'broadcast', 'payments'].forEach(id => {
     const sec = document.getElementById(`tab-${id}`);
     if (sec) sec.style.display = 'none';
   });
@@ -284,6 +284,7 @@ function switchTab(tabId) {
   if (tabId === 'stores') loadShops();
   if (tabId === 'reminders') loadReminders();
   if (tabId === 'broadcast') loadAnnouncements();
+  if (tabId === 'payments') loadPayments();
 }
 
 // ==========================================================================
@@ -294,8 +295,55 @@ async function loadAllDashboardData() {
   await Promise.all([
     loadMetrics(),
     loadShops(false),
-    loadAnnouncements()
+    loadAnnouncements(),
+    loadPayments()
   ]);
+}
+
+async function loadPayments() {
+  const tbody = document.getElementById('paymentsTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="table-state-cell">Fetching latest UPI collections...</td></tr>';
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/payments`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) throw new Error('Failed to load payments');
+    const payments = await res.json();
+
+    const countBadge = document.getElementById('tabPaymentsCount');
+    if (countBadge) countBadge.innerText = payments.length;
+
+    if (payments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="table-state-cell">No UPI payments recorded yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = payments.map(p => {
+      const d = new Date(p.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+      return `
+        <tr>
+          <td><strong>${d}</strong></td>
+          <td>
+            <div style="font-weight: 700;">${escapeHtml(p.shop_name)}</div>
+            <div style="font-size: 11px; color: #64748b;">${escapeHtml(p.owner_name)}</div>
+          </td>
+          <td>${escapeHtml(p.mobile_number || 'N/A')}</td>
+          <td><span style="font-weight: 800; color: #16a34a;">₹${Number(p.amount).toFixed(2)}</span></td>
+          <td>
+            <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #0f172a;">${escapeHtml(p.utr || 'N/A')}</code>
+            <button class="btn-copy-email" style="margin-left: 4px;" onclick="copyTextToClipboard('${p.utr}')">Copy</button>
+          </td>
+          <td>
+            <span class="badge-status-active">SUCCESS</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="table-state-cell" style="color: #dc2626;">Error: ${escapeHtml(err.message)}</td></tr>`;
+  }
 }
 
 async function loadMetrics() {

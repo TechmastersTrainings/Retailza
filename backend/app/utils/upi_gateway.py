@@ -1,16 +1,17 @@
 """
-Client for the self-hosted UPI Gateway (merchant API v1).
+Client for the self-hosted UPI Gateway and Native Standalone UPI Payments.
 
-The gateway creates the payment order, shows the customer a UPI QR / intent
-(or a PhonePe/Paytm PG hosted checkout) and verifies the payment with the
-provider. Retailza only asks the gateway for the order status and trusts
-nothing the mobile app reports about a payment.
+In Native Standalone Mode (default when ADMIN_UPI_ID is set), payments go directly
+to Sachin's UPI ID (sachin.pratik97-1@okaxis) with 0% gateway fees and instant
+settlement into your bank account.
 
-API key/secret stay on the server; they are never sent to the mobile app.
+If external UPI_GATEWAY_BASE_URL credentials are provided, it can also delegate
+to an external gateway.
 """
 import hashlib
 import hmac
 import time
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Optional
 from urllib.parse import quote
@@ -30,12 +31,16 @@ class UpiGatewayNotConfigured(UpiGatewayError):
     pass
 
 
-def is_configured() -> bool:
+def is_external_gateway() -> bool:
     return bool(
         settings.UPI_GATEWAY_BASE_URL.strip()
         and settings.UPI_GATEWAY_API_KEY.strip()
         and settings.UPI_GATEWAY_API_SECRET.strip()
     )
+
+
+def is_configured() -> bool:
+    return is_external_gateway() or bool(settings.ADMIN_UPI_ID.strip())
 
 
 def _api_url(path: str) -> str:
@@ -88,7 +93,35 @@ def _request(method: str, path: str, json_body: Optional[dict] = None) -> Dict[s
 
 def create_order(amount: Decimal, client_order_id: str, note: Optional[str] = None,
                  customer_name: Optional[str] = None, customer_mobile: Optional[str] = None) -> Dict[str, Any]:
-    """Create a payment order. Returns the gateway's order data."""
+    """Create a payment order. Returns order data."""
+    if not is_external_gateway():
+        # Native Standalone Direct UPI Mode
+        order_id = f"RTZSUB-{client_order_id}"
+        amount_str = f"{Decimal(amount).quantize(Decimal('0.01'))}"
+        note_str = quote((note or "Retailza 30 day plan")[:50])
+        name_str = quote(settings.ADMIN_UPI_NAME[:50])
+        upi_intent = (
+            f"upi://pay?pa={settings.ADMIN_UPI_ID}"
+            f"&pn={name_str}"
+            f"&am={amount_str}"
+            f"&tr={order_id}"
+            f"&cu=INR"
+            f"&tn={note_str}"
+        )
+        return {
+            "order_id": order_id,
+            "client_order_id": client_order_id,
+            "amount": amount_str,
+            "currency": "INR",
+            "status": "pending",
+            "environment": "live",
+            "test": False,
+            "utr": None,
+            "payment_url": f"https://retailza-api.onrender.com/api/subscriptions/pay/{order_id}",
+            "upi_intent": upi_intent,
+            "expires_at": (datetime.utcnow() + timedelta(minutes=30)).isoformat() + "+00:00",
+        }
+
     payload: Dict[str, Any] = {
         "amount": f"{Decimal(amount).quantize(Decimal('0.01'))}",
         "client_order_id": client_order_id,
@@ -104,6 +137,14 @@ def create_order(amount: Decimal, client_order_id: str, note: Optional[str] = No
 
 def get_order(order_id: str) -> Dict[str, Any]:
     """Fetch the order; the gateway re-checks the provider before answering."""
+    if not is_external_gateway():
+        return {
+            "order_id": order_id,
+            "status": "pending",
+            "environment": "live",
+            "currency": "INR",
+            "amount": str(settings.SUBSCRIPTION_AMOUNT),
+        }
     return _request("GET", "/orders/" + quote(order_id, safe=""))
 
 

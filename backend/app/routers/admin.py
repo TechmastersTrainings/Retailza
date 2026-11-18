@@ -284,3 +284,33 @@ def delete_announcement(
     db.delete(announcement)
     db.commit()
     return {"success": True, "message": "Announcement deleted"}
+
+
+@router.get("/payments")
+def list_subscription_payments(
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db)
+):
+    """List all received UPI subscription payments with shop name, UTR, and timestamp."""
+    payments = db.query(SubscriptionPayment)\
+        .join(Subscription, SubscriptionPayment.subscription_id == Subscription.id)\
+        .join(Shop, Subscription.shop_id == Shop.id)\
+        .order_by(SubscriptionPayment.created_at.desc()).all()
+
+    return [
+        {
+            "id": p.id,
+            "shop_id": p.subscription.shop_id,
+            "shop_name": p.subscription.shop.shop_name,
+            "owner_name": p.subscription.shop.owner_name,
+            "mobile_number": p.subscription.shop.owner.mobile_number if p.subscription.shop.owner else "",
+            "utr": p.payment_id,
+            "order_id": p.order_id,
+            "amount": float(p.amount),
+            "payment_method": p.payment_method,
+            "status": p.status,
+            "created_at": p.created_at.isoformat()
+        }
+        for p in payments
+    ]
+

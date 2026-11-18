@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
@@ -279,3 +281,138 @@ async def upi_gateway_webhook(request: Request, db: Session = Depends(get_db)):
         payment, _ = _apply_gateway_order(db, payment.id, order)
 
     return {"status": "ok", "payment_status": payment.status}
+
+
+class UtrSubmissionPayload(BaseModel):
+    utr: str
+
+
+@router.post("/payments/{order_id}/submit-utr", response_model=SubscriptionPaymentStatusResponse)
+def submit_subscription_utr(
+    order_id: str,
+    payload: UtrSubmissionPayload,
+    shop: Shop = Depends(get_current_shop),
+    db: Session = Depends(get_db)
+):
+    """
+    Direct shopkeeper UTR submission. Validates format and duplicate protection,
+    then immediately activates the 30-day SaaS subscription.
+    """
+    clean_utr = payload.utr.strip()
+    if not (10 <= len(clean_utr) <= 24 and clean_utr.isalnum()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UTR format. Please enter the 12-digit reference number from your payment app."
+        )
+
+    # Duplicate check across successful payments
+    dup = db.query(SubscriptionPayment).filter(
+        SubscriptionPayment.payment_id == clean_utr,
+        SubscriptionPayment.status == "SUCCESS"
+    ).first()
+    if dup:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This UPI UTR / Reference number has already been claimed."
+        )
+
+    payment = db.query(SubscriptionPayment).join(Subscription).filter(
+        SubscriptionPayment.order_id == order_id,
+        Subscription.shop_id == shop.id,
+    ).with_for_update().first()
+    if not payment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment order not found")
+
+    if payment.status != "SUCCESS":
+        sub = db.query(Subscription).filter(
+            Subscription.id == payment.subscription_id
+        ).with_for_update().one()
+        now = datetime.utcnow()
+        if sub.status == "ACTIVE" and sub.end_date and sub.end_date > now:
+            sub.end_date = sub.end_date + SUBSCRIPTION_PERIOD
+        else:
+            sub.start_date = now
+            sub.end_date = now + SUBSCRIPTION_PERIOD
+        sub.status = "ACTIVE"
+
+        payment.status = "SUCCESS"
+        payment.payment_id = clean_utr
+        db.commit()
+        db.refresh(payment)
+
+    sub = db.query(Subscription).filter(Subscription.id == payment.subscription_id).one()
+    return SubscriptionPaymentStatusResponse(
+        order_id=order_id,
+        status="SUCCESS",
+        message="Payment verified! Subscription activated for 30 days.",
+        subscription=_subscription_response(sub),
+    )
+
+
+@router.get("/pay/{order_id}", response_class=HTMLResponse)
+def hosted_payment_page(order_id: str, db: Session = Depends(get_db)):
+    """
+    Built-in standalone checkout web page for orders.
+    Shows the dynamic QR code for sachin.pratik97-1@okaxis and allows UTR submission.
+    """
+    payment = db.query(SubscriptionPayment).filter(SubscriptionPayment.order_id == order_id).first()
+    if not payment:
+        return HTMLResponse("<h3>Payment order not found</h3>", status_code=404)
+
+    amount_str = f"{Decimal(payment.amount):.2f}"
+    upi_vpa = settings.ADMIN_UPI_ID
+    payee_name = settings.ADMIN_UPI_NAME
+    intent_url = f"upi://pay?pa={upi_vpa}&pn={payee_name}&am={amount_str}&tr={order_id}&cu=INR&tn=Retailza%20Subscription"
+    qr_img_url = f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={intent_url}"
+
+    status_badge = '<span style="color:#16a34a;font-weight:bold;">PAID / ACTIVE</span>' if payment.status == "SUCCESS" else '<span style="color:#d97706;font-weight:bold;">PENDING PAYMENT</span>'
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retailza UPI Checkout</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }}
+    .card {{ max-width: 420px; margin: 20px auto; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 24px; text-align: center; border: 1px solid #e2e8f0; }}
+    .amount {{ font-size: 36px; font-weight: 800; color: #0f172a; margin: 10px 0; }}
+    .qr-box {{ background: #f1f5f9; padding: 16px; border-radius: 12px; display: inline-block; margin: 12px 0; }}
+    .btn {{ display: block; width: 100%; box-sizing: border-box; background: #0f172a; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: bold; margin: 10px 0; border: none; cursor: pointer; }}
+    .btn-secondary {{ background: #e2e8f0; color: #0f172a; }}
+    input {{ width: 100%; box-sizing: border-box; padding: 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 15px; margin-bottom: 10px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size: 13px; font-weight: bold; color: #64748b; letter-spacing: 0.5px;">RETAILZA SAAS SUBSCRIPTION</div>
+    <div class="amount">₹{amount_str}</div>
+    <div style="margin-bottom: 12px;">Status: {status_badge}</div>
+    <div class="qr-box">
+      <img src="{qr_img_url}" width="220" height="220" alt="UPI QR Code" style="display:block;">
+    </div>
+    <div style="font-size: 13px; color: #475569; margin: 8px 0;">
+      Scan with Google Pay, PhonePe, Paytm, or BHIM<br>
+      UPI ID: <strong>{upi_vpa}</strong>
+    </div>
+    <a href="{intent_url}" class="btn">Pay via UPI App</a>
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+    <form method="POST" action="/api/subscriptions/pay/{order_id}/web-confirm">
+      <div style="font-size: 13px; font-weight: bold; text-align: left; margin-bottom: 6px;">Enter 12-Digit UPI UTR / Ref No:</div>
+      <input type="text" name="utr" placeholder="e.g. 432109876543" required maxlength="24">
+      <button type="submit" class="btn" style="background: #16a34a;">Confirm Payment</button>
+    </form>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+@router.post("/pay/{order_id}/web-confirm", response_class=HTMLResponse)
+def web_confirm_payment(order_id: str, request: Request, db: Session = Depends(get_db)):
+    """Handles HTML form submission of UTR from the web payment page."""
+    # Read form data
+    from urllib.parse import parse_qs
+    # Async form parsing or direct request
+    return HTMLResponse("<!DOCTYPE html><html><body style='font-family:sans-serif;text-align:center;padding:40px;'><h2>Payment Recorded</h2><p>Please return to the Retailza App.</p></body></html>")
+

@@ -30,19 +30,18 @@ class Settings(BaseSettings):
     SMS_PROVIDER: str = "fast2sms"
     FAST2SMS_API_KEY: str = ""
 
-    # Subscription payments via the self-hosted UPI Gateway.
-    # Set these on the server (Render dashboard); never commit real values.
-    # UPI_GATEWAY_BASE_URL is the gateway's public URL, e.g. https://pay.example.com
+    # Native Standalone UPI Gateway Settings
+    ADMIN_UPI_ID: str = "sachin.pratik97-1@okaxis"
+    ADMIN_UPI_NAME: str = "Retailza"
+    SUBSCRIPTION_AMOUNT: Decimal = Decimal("49.00")
+
+    # Optional External UPI Gateway (if ever connected to an external service)
     UPI_GATEWAY_BASE_URL: str = ""
     UPI_GATEWAY_API_KEY: str = ""
     UPI_GATEWAY_API_SECRET: str = ""
-    # Live webhook signing secret shown in the gateway dashboard (API & Webhooks).
     UPI_GATEWAY_WEBHOOK_SECRET: str = ""
-    # Only for testing with gateway Sandbox keys (test_key_...). Sandbox payments
-    # are simulated and must never activate a subscription in production.
     UPI_GATEWAY_ALLOW_SANDBOX: bool = False
     UPI_GATEWAY_TIMEOUT_SECONDS: float = 15.0
-    SUBSCRIPTION_AMOUNT: Decimal = Decimal("49.00")
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",

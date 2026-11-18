@@ -35,6 +35,7 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
   bool _finished = false;
   Timer? _pollTimer;
   DateTime? _pollingStartedAt;
+  final TextEditingController _utrController = TextEditingController();
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
+    _utrController.dispose();
     super.dispose();
   }
 
@@ -152,6 +154,31 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
     final opened = await _launch(url);
     if (!opened && mounted) {
       _showSnack("Could not open the payment page.", AppColors.debtRed);
+    }
+  }
+
+  Future<void> _submitUtr() async {
+    final utr = _utrController.text.trim();
+    if (utr.isEmpty) {
+      _showSnack("Please enter the 12-digit UTR from your UPI payment receipt.", AppColors.debtRed);
+      return;
+    }
+    final order = _order;
+    if (order == null) return;
+    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+    setState(() => _checking = true);
+    final result = await shopProvider.submitSubscriptionUtr(order.orderId, utr);
+    if (!mounted) return;
+    setState(() => _checking = false);
+    if (result != null && result.isPaid) {
+      _finished = true;
+      _pollTimer?.cancel();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
+      );
+    } else {
+      _showSnack(shopProvider.errorMessage ?? "Invalid UTR. Please check the reference number.", AppColors.debtRed);
     }
   }
 
@@ -316,6 +343,50 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
         icon: const Icon(Icons.open_in_new, size: 18),
         label: Text(order.upiIntent == null ? "Open secure payment page" : "Open payment page instead"),
         style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+      ),
+      const SizedBox(height: 14),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              "Step 2: Enter 12-Digit UTR / Ref No.",
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "After paying in Google Pay, PhonePe, or Paytm, enter the 12-digit UPI UTR / Ref number from your receipt to activate immediately.",
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _utrController,
+              keyboardType: TextInputType.text,
+              maxLength: 24,
+              decoration: InputDecoration(
+                hintText: "e.g. 432109876543",
+                labelText: "12-Digit UPI UTR / Ref Number",
+                counterText: "",
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.tag, size: 20),
+              ),
+            ),
+            const SizedBox(height: 10),
+            CustomButton(
+              text: "Verify UTR & Activate (सत्यापित करें)",
+              isLoading: _checking,
+              onPressed: _submitUtr,
+            ),
+          ],
+        ),
       ),
       const SizedBox(height: 10),
       TextButton.icon(

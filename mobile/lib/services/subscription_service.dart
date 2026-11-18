@@ -75,4 +75,14 @@ class SubscriptionService {
     await ApiClient.saveCachedSubscription(result.subscription.toJson());
     return result;
   }
+
+  Future<SubscriptionPaymentStatus> submitUtr(String orderId, String utr) async {
+    final response = await ApiClient.post(
+      '/subscriptions/payments/${Uri.encodeComponent(orderId)}/submit-utr',
+      body: {'utr': utr.trim()},
+    );
+    final result = SubscriptionPaymentStatus.fromJson(response as Map<String, dynamic>);
+    await ApiClient.saveCachedSubscription(result.subscription.toJson());
+    return result;
+  }
 }

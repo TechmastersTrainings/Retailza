@@ -181,4 +181,23 @@ class ShopProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  /// Submits the 12-digit UPI UTR to immediately verify payment and activate subscription.
+  Future<SubscriptionPaymentStatus?> submitSubscriptionUtr(String orderId, String utr) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final result = await _subscriptionService.submitUtr(orderId, utr);
+      _subscription = result.subscription;
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
 }
