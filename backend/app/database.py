@@ -95,50 +95,56 @@ def init_db():
             if "purchase_price" not in item_cols:
                 conn.execute(text("ALTER TABLE sale_items ADD COLUMN purchase_price NUMERIC(10, 2) DEFAULT 0.00;"))
 
+        # Check otp_verifications table (abuse-protection columns)
+        if "otp_verifications" in existing_tables:
+            otp_cols = [c["name"] for c in inspector.get_columns("otp_verifications")]
+            if "attempts" not in otp_cols:
+                conn.execute(text("ALTER TABLE otp_verifications ADD COLUMN attempts INTEGER DEFAULT 0;"))
+            if "request_count" not in otp_cols:
+                conn.execute(text("ALTER TABLE otp_verifications ADD COLUMN request_count INTEGER DEFAULT 1;"))
+
         conn.commit()
 
-    # Seed Default Super Admin Accounts
+    seed_super_admin()
+
+
+def seed_super_admin():
+    """
+    Create ONE super-admin from environment variables, only if it does not
+    already exist. Credentials are never hard-coded, and an existing admin's
+    password is never reset on boot. If SEED_ADMIN_EMAIL/PASSWORD are unset,
+    no admin is created (configure them in the Render dashboard).
+    """
+    from backend.app.config import settings
+
+    email = (settings.SEED_ADMIN_EMAIL or "").strip().lower()
+    password = settings.SEED_ADMIN_PASSWORD or ""
+    if not email or not password:
+        print("[init_db] SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD not set; skipping admin seeding.")
+        return
+
     try:
         from backend.app.models import User
         from backend.app.utils.security import hash_password
+        mobile = (settings.SEED_ADMIN_MOBILE or "").strip() or None
         with SessionLocal() as db:
-            default_admins = [
-                {
-                    "email": "admin@retailza.com",
-                    "mobile_number": "9999999999",
-                    "name": "Retailza Super Admin",
-                    "role": "SUPER_ADMIN",
-                    "password": "Admin@Retailza2026"
-                },
-                {
-                    "email": "techmastersinnovations@gmail.com",
-                    "mobile_number": "9888888888",
-                    "name": "Techmasters Admin",
-                    "role": "SUPER_ADMIN",
-                    "password": "Fri10Feb@2023"
-                }
-            ]
-            for admin_info in default_admins:
-                target_email = admin_info["email"].lower()
-                admin = db.query(User).filter(
-                    (func.lower(User.email) == target_email) | (User.mobile_number == admin_info["mobile_number"])
-                ).first()
-                if not admin:
-                    admin = User(
-                        email=target_email,
-                        mobile_number=admin_info["mobile_number"],
-                        name=admin_info["name"],
-                        role="SUPER_ADMIN",
-                        hashed_password=hash_password(admin_info["password"]),
-                        is_active=True
-                    )
-                    db.add(admin)
-                    db.commit()
-                else:
-                    admin.role = "SUPER_ADMIN"
-                    admin.email = target_email
-                    admin.hashed_password = hash_password(admin_info["password"])
-                    db.commit()
+            match = func.lower(User.email) == email
+            if mobile:
+                match = match | (User.mobile_number == mobile)
+            existing = db.query(User).filter(match).first()
+            if existing:
+                print(f"[init_db] Super admin {email} already exists; left unchanged.")
+                return
+            db.add(User(
+                email=email,
+                mobile_number=mobile,
+                name=settings.SEED_ADMIN_NAME or "Retailza Super Admin",
+                role="SUPER_ADMIN",
+                hashed_password=hash_password(password),
+                is_active=True,
+            ))
+            db.commit()
+            print(f"[init_db] Seeded super admin {email}.")
     except Exception as e:
         print(f"[init_db] Super Admin seeding notice: {e}")
 

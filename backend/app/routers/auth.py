@@ -48,23 +48,51 @@ def request_otp(
         )
     target, is_email = normalize_identifier(raw_target)
 
+    now = datetime.utcnow()
     otp_code = generate_otp()
     expires_at = get_otp_expiry()
 
-    # Invalidate previous unverified OTPs for this identifier
-    db.query(OTPVerification).filter(
+    # Abuse protection: reuse the current unexpired, unverified code window so we
+    # can enforce a per-identifier cooldown and a cap on sends, instead of letting
+    # an attacker trigger unlimited SMS (carrier cost) or flood a victim.
+    active = db.query(OTPVerification).filter(
         (OTPVerification.identifier == target) | (OTPVerification.mobile_number == target),
-        OTPVerification.is_verified == False
-    ).delete()
+        OTPVerification.is_verified == False,
+        OTPVerification.expires_at >= now,
+    ).order_by(OTPVerification.id.desc()).first()
 
-    otp_record = OTPVerification(
-        identifier=target,
-        mobile_number=target if not is_email else None,
-        otp_code=otp_code,
-        expires_at=expires_at,
-        is_verified=False
-    )
-    db.add(otp_record)
+    if active:
+        since_last = (now - active.created_at).total_seconds()
+        if since_last < settings.OTP_RESEND_COOLDOWN_SECONDS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {int(settings.OTP_RESEND_COOLDOWN_SECONDS - since_last) + 1}s before requesting another OTP.",
+            )
+        if (active.request_count or 0) >= settings.OTP_MAX_SENDS_PER_WINDOW:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many OTP requests. Please try again in a few minutes.",
+            )
+        active.otp_code = otp_code
+        active.expires_at = expires_at
+        active.created_at = now
+        active.attempts = 0
+        active.request_count = (active.request_count or 0) + 1
+    else:
+        # Clean up any stale (expired) unverified rows, then start a fresh window.
+        db.query(OTPVerification).filter(
+            (OTPVerification.identifier == target) | (OTPVerification.mobile_number == target),
+            OTPVerification.is_verified == False,
+        ).delete()
+        db.add(OTPVerification(
+            identifier=target,
+            mobile_number=target if not is_email else None,
+            otp_code=otp_code,
+            expires_at=expires_at,
+            is_verified=False,
+            attempts=0,
+            request_count=1,
+        ))
     db.commit()
 
     if is_email:
@@ -80,7 +108,8 @@ def request_otp(
         "identifier": target,
         "expires_in_minutes": settings.OTP_EXPIRE_MINUTES
     }
-    if settings.DEBUG:
+    # Never expose the OTP in production, even if DEBUG is left on by mistake.
+    if settings.DEBUG and settings.APP_ENV != "production":
         response_data["debug_otp"] = otp_code
 
     return response_data
@@ -98,9 +127,10 @@ def verify_otp(payload: OTPVerify, db: Session = Depends(get_db)):
     target, is_email = normalize_identifier(raw_target)
 
     now = datetime.utcnow()
+    # Fetch the active code by identifier (NOT by the submitted code) so we can
+    # count wrong guesses and lock the code, blocking 6-digit brute force.
     otp_record = db.query(OTPVerification).filter(
         (OTPVerification.identifier == target) | (OTPVerification.mobile_number == target),
-        OTPVerification.otp_code == payload.otp_code,
         OTPVerification.is_verified == False,
         OTPVerification.expires_at >= now
     ).order_by(OTPVerification.id.desc()).first()
@@ -111,7 +141,24 @@ def verify_otp(payload: OTPVerify, db: Session = Depends(get_db)):
             detail="Invalid or expired OTP"
         )
 
-    # Mark OTP as verified
+    if (otp_record.attempts or 0) >= settings.OTP_MAX_VERIFY_ATTEMPTS:
+        # Burn the code so it cannot be guessed further; user must request a new one.
+        otp_record.is_verified = True
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many incorrect attempts. Please request a new OTP."
+        )
+
+    if otp_record.otp_code != payload.otp_code:
+        otp_record.attempts = (otp_record.attempts or 0) + 1
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+
+    # Correct code: mark OTP as verified
     otp_record.is_verified = True
 
     # Find or create User

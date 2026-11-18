@@ -104,25 +104,25 @@ class RefreshTokenRequest(BaseModel):
 class ShopCreate(BaseModel):
     shop_name: str = Field(..., min_length=2, max_length=150)
     owner_name: str = Field(..., min_length=2, max_length=100)
-    category: Optional[str] = Field("Provision Store", description="Store category (e.g. Provision Store, Electrical, Furniture, Rice Retail)")
-    address: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    pincode: Optional[str] = None
+    category: Optional[str] = Field("Provision Store", max_length=100, description="Store category (e.g. Provision Store, Electrical, Furniture, Rice Retail)")
+    address: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=10)
     upi_qr_image: Optional[str] = None
-    upi_id: Optional[str] = None
+    upi_id: Optional[str] = Field(None, max_length=100)
 
 
 class ShopUpdate(BaseModel):
-    shop_name: Optional[str] = None
-    owner_name: Optional[str] = None
-    category: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    pincode: Optional[str] = None
+    shop_name: Optional[str] = Field(None, min_length=2, max_length=150)
+    owner_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    category: Optional[str] = Field(None, max_length=100)
+    address: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    pincode: Optional[str] = Field(None, max_length=10)
     upi_qr_image: Optional[str] = None
-    upi_id: Optional[str] = None
+    upi_id: Optional[str] = Field(None, max_length=100)
 
 
 # --- Subscription Schemas ---
@@ -263,12 +263,12 @@ class StockTransactionResponse(BaseModel):
 
 class CustomerCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    mobile_number: Optional[str] = None
+    mobile_number: Optional[str] = Field(None, max_length=15)
 
 
 class CustomerUpdate(BaseModel):
-    name: Optional[str] = None
-    mobile_number: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    mobile_number: Optional[str] = Field(None, max_length=15)
 
 
 class CreditPaymentCreate(BaseModel):
