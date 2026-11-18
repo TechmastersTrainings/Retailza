@@ -87,7 +87,7 @@ class SubscriptionPayment(Base):
     signature = Column(String(255), nullable=True)
     amount = Column(Numeric(10, 2), nullable=False)
     status = Column(String(20), default="SUCCESS", nullable=False)  # PENDING, SUCCESS, FAILED
-    payment_method = Column(String(50), default="UPI_GATEWAY", nullable=False)
+    payment_method = Column(String(50), default="UPI_DIRECT", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     subscription = relationship("Subscription", back_populates="payments")

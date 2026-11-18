@@ -10,7 +10,8 @@ from backend.app.models import (
 )
 from backend.app.schemas import (
     AdminMetricsResponse, AdminShopItem, SendReminderRequest,
-    ExtendSubscriptionRequest, AnnouncementCreate, AnnouncementResponse
+    ExtendSubscriptionRequest, AnnouncementCreate, AnnouncementResponse,
+    AdminSubscriptionPaymentItem
 )
 from backend.app.dependencies import require_super_admin
 from backend.app.config import settings
@@ -240,6 +241,102 @@ def extend_subscription_manually(
         "status": sub.status,
         "days_extended": payload.days
     }
+
+
+@router.get("/subscription-payments", response_model=List[AdminSubscriptionPaymentItem])
+def list_subscription_payments(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+):
+    """List UPI subscription payments (newest first) so you can reconcile UTRs
+    against your bank statement and spot or reject fakes."""
+    q = (
+        db.query(SubscriptionPayment, Shop)
+        .join(Subscription, SubscriptionPayment.subscription_id == Subscription.id)
+        .join(Shop, Subscription.shop_id == Shop.id)
+    )
+    if status_filter:
+        q = q.filter(SubscriptionPayment.status == status_filter.upper())
+    rows = q.order_by(SubscriptionPayment.created_at.desc()).limit(500).all()
+    return [
+        AdminSubscriptionPaymentItem(
+            id=p.id,
+            shop_id=shop.id,
+            shop_name=shop.shop_name,
+            owner_name=shop.owner_name,
+            mobile_number=shop.owner.mobile_number if shop.owner else None,
+            amount=p.amount,
+            status=p.status,
+            utr=p.payment_id,
+            created_at=p.created_at,
+        )
+        for p, shop in rows
+    ]
+
+
+@router.post("/subscription-payments/{payment_id}/verify")
+def verify_subscription_payment(
+    payment_id: int,
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+):
+    """Approve a UTR awaiting review: mark it paid and activate 30 days."""
+    payment = db.query(SubscriptionPayment).filter(
+        SubscriptionPayment.id == payment_id
+    ).with_for_update().first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if payment.status == "SUCCESS":
+        return {"success": True, "status": "SUCCESS", "message": "Already verified."}
+
+    sub = db.query(Subscription).filter(
+        Subscription.id == payment.subscription_id
+    ).with_for_update().one()
+    now = datetime.utcnow()
+    if sub.status == "ACTIVE" and sub.end_date and sub.end_date > now:
+        sub.end_date = sub.end_date + timedelta(days=settings.SUBSCRIPTION_PERIOD_DAYS)
+    else:
+        sub.start_date = now
+        sub.end_date = now + timedelta(days=settings.SUBSCRIPTION_PERIOD_DAYS)
+    sub.status = "ACTIVE"
+    payment.status = "SUCCESS"
+    db.commit()
+    return {"success": True, "status": "SUCCESS", "shop_id": sub.shop_id,
+            "new_end_date": sub.end_date.isoformat()}
+
+
+@router.post("/subscription-payments/{payment_id}/reject")
+def reject_subscription_payment(
+    payment_id: int,
+    admin: User = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+):
+    """Reject a fake/unmatched UTR. If it had already activated the month, the
+    subscription is pulled back to EXPIRED so the shop must pay again."""
+    payment = db.query(SubscriptionPayment).filter(
+        SubscriptionPayment.id == payment_id
+    ).with_for_update().first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    was_paid = payment.status == "SUCCESS"
+    payment.status = "FAILED"
+
+    if was_paid:
+        sub = db.query(Subscription).filter(
+            Subscription.id == payment.subscription_id
+        ).with_for_update().one()
+        # Only revoke if no OTHER successful payment still covers the period.
+        other = db.query(SubscriptionPayment).filter(
+            SubscriptionPayment.subscription_id == sub.id,
+            SubscriptionPayment.id != payment.id,
+            SubscriptionPayment.status == "SUCCESS",
+        ).first()
+        if not other:
+            sub.status = "EXPIRED"
+    db.commit()
+    return {"success": True, "status": "FAILED", "revoked_activation": was_paid}
 
 
 @router.get("/announcements", response_model=List[AnnouncementResponse])

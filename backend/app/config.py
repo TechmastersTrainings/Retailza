@@ -49,22 +49,24 @@ class Settings(BaseSettings):
     SEED_ADMIN_PASSWORD: str = ""
 
     # Server-side subscription paywall. Off by default so the live app is not
-    # locked out before the UPI gateway is deployed. Turn on once it is live.
+    # locked out before billing is switched on. Turn on once you are collecting.
     ENFORCE_SUBSCRIPTION: bool = False
 
-    # Subscription payments via the self-hosted UPI Gateway.
-    # Set these on the server (Render dashboard); never commit real values.
-    # UPI_GATEWAY_BASE_URL is the gateway's public URL, e.g. https://pay.example.com
-    UPI_GATEWAY_BASE_URL: str = ""
-    UPI_GATEWAY_API_KEY: str = ""
-    UPI_GATEWAY_API_SECRET: str = ""
-    # Live webhook signing secret shown in the gateway dashboard (API & Webhooks).
-    UPI_GATEWAY_WEBHOOK_SECRET: str = ""
-    # Only for testing with gateway Sandbox keys (test_key_...). Sandbox payments
-    # are simulated and must never activate a subscription in production.
-    UPI_GATEWAY_ALLOW_SANDBOX: bool = False
-    UPI_GATEWAY_TIMEOUT_SECONDS: float = 15.0
+    # Direct UPI subscription billing (no payment aggregator, no middleman).
+    # The ₹49 is paid straight into YOUR own UPI ID / bank account. The app shows
+    # this VPA as a QR + intent; the shop owner pays with any UPI app and submits
+    # the 12-digit UTR (bank reference) printed on their payment receipt.
+    #   SUBSCRIPTION_UPI_ID        your collecting VPA, e.g. techmasters@okhdfcbank
+    #   SUBSCRIPTION_UPI_PAYEE     name shown in the UPI app while paying
+    # Set these on the server (Render dashboard).
+    SUBSCRIPTION_UPI_ID: str = ""
+    SUBSCRIPTION_UPI_PAYEE: str = "Retailza"
     SUBSCRIPTION_AMOUNT: Decimal = Decimal("49.00")
+    SUBSCRIPTION_PERIOD_DAYS: int = 30
+    # True  -> a validated, unused UTR activates the month immediately (lowest
+    #          friction; you reconcile against your bank and can reject fakes).
+    # False -> UTR submissions wait in REVIEW until an admin verifies each one.
+    SUBSCRIPTION_AUTO_ACTIVATE_ON_UTR: bool = True
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",

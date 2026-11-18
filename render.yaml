@@ -34,18 +34,19 @@ services:
         value: fast2sms
       - key: FAST2SMS_API_KEY
         value: hXIfLmtDixvHZy1VnkFojqzBs0Ju3EKe6MAG9QgcCTlr7ap4wdpG2QYqSEsaCzPojAei06hb34fNgKdl
-      # UPI Gateway subscription payments: set values in the Render dashboard.
-      - key: UPI_GATEWAY_BASE_URL
+      # Direct UPI subscription billing (no aggregator). The ₹49 is paid into
+      # your own UPI ID. Set the VPA in the Render dashboard (sync:false).
+      - key: SUBSCRIPTION_UPI_ID
         sync: false
-      - key: UPI_GATEWAY_API_KEY
-        sync: false
-      - key: UPI_GATEWAY_API_SECRET
-        sync: false
-      - key: UPI_GATEWAY_WEBHOOK_SECRET
-        sync: false
+      - key: SUBSCRIPTION_UPI_PAYEE
+        value: "Retailza"
       - key: SUBSCRIPTION_AMOUNT
         value: "49.00"
-      # Server-side paywall: turn on only after the UPI gateway is live.
+      - key: SUBSCRIPTION_PERIOD_DAYS
+        value: "30"
+      - key: SUBSCRIPTION_AUTO_ACTIVATE_ON_UTR
+        value: "true"
+      # Server-side paywall: turn on only once you are ready to collect.
       - key: ENFORCE_SUBSCRIPTION
         value: "false"
       # Allowed browser origins for CORS (comma-separated, or * ). Mobile app is unaffected.

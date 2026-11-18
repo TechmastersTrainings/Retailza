@@ -82,7 +82,7 @@ def test_auth_otp_flow(client):
     assert me.json()["user"]["mobile_number"] == mobile
 
 
-def test_shop_setup_and_subscription_flow(client, fake_gateway):
+def test_shop_setup_and_subscription_flow(client):
     headers = get_authenticated_client(client, mobile="9123456780")
 
     # 1. Setup Shop
@@ -118,17 +118,23 @@ def test_shop_setup_and_subscription_flow(client, fake_gateway):
     order_data = res_order.json()
     assert "order_id" in order_data
     assert Decimal(str(order_data["amount"])) == Decimal("49.00")
-    assert order_data["payment_url"].startswith("https://")
-    status_url = f"/api/subscriptions/payments/{order_data['order_id']}/status"
+    assert order_data["upi_intent"].startswith("upi://pay")
+    assert order_data["upi_id"] == "retailza@okhdfcbank"
+    order_id = order_data["order_id"]
+    status_url = f"/api/subscriptions/payments/{order_id}/status"
+    utr_url = f"/api/subscriptions/payments/{order_id}/submit-utr"
 
-    # 5. Not paid yet at the gateway -> stays inactive
+    # 5. Not paid yet -> stays inactive
     pending = client.get(status_url, headers=headers).json()
     assert pending["status"] == "PENDING"
     assert pending["subscription"]["is_active"] is False
 
-    # 6. Gateway confirms the payment -> subscription activated
-    fake_gateway.set(order_data["order_id"], status="paid", utr="412345678901")
-    res_pay = client.get(status_url, headers=headers)
+    # 5b. A junk UTR is rejected
+    bad = client.post(utr_url, json={"utr": "notadigit12"}, headers=headers)
+    assert bad.status_code == 400
+
+    # 6. Submitting a valid 12-digit UTR activates the subscription
+    res_pay = client.post(utr_url, json={"utr": "412345678901"}, headers=headers)
     assert res_pay.status_code == 200
     assert res_pay.json()["status"] == "SUCCESS"
     updated_sub = res_pay.json()["subscription"]
@@ -137,7 +143,7 @@ def test_shop_setup_and_subscription_flow(client, fake_gateway):
     assert updated_sub["end_date"] is not None
 
 
-def test_complete_kirana_business_lifecycle(client, fake_gateway):
+def test_complete_kirana_business_lifecycle(client):
     headers = get_authenticated_client(client, mobile="9811223344")
 
     # 1. Setup Shop & Activate Subscription
@@ -149,8 +155,10 @@ def test_complete_kirana_business_lifecycle(client, fake_gateway):
     }, headers=headers)
 
     sub_order = client.post("/api/subscriptions/create-order", headers=headers).json()
-    fake_gateway.set(sub_order["order_id"], status="paid", utr="412345678999")
-    activated = client.get(f"/api/subscriptions/payments/{sub_order['order_id']}/status", headers=headers).json()
+    activated = client.post(
+        f"/api/subscriptions/payments/{sub_order['order_id']}/submit-utr",
+        json={"utr": "412345678999"}, headers=headers,
+    ).json()
     assert activated["subscription"]["is_active"] is True
 
     # 2. Create Products with Decimal Precision
@@ -353,7 +361,7 @@ def test_sales_and_customer_validations(client):
     assert len(prods) == 0
 
 
-def test_upi_qr_and_paid_unpaid_profit_engine(client, fake_gateway):
+def test_upi_qr_and_paid_unpaid_profit_engine(client):
     headers = get_authenticated_client(client, mobile="9811223344")
 
     # 1. Onboarding with UPI QR Image screenshot (base64) & UPI ID
@@ -453,12 +461,12 @@ def test_upi_qr_and_paid_unpaid_profit_engine(client, fake_gateway):
     # Realized today profit from PAID sales = 40.00
     assert Decimal(str(dash["today_profit"])) == Decimal("40.00")
 
-    # 6. Check UPI Gateway Subscription Order (no keys exposed to the app)
+    # 6. Check direct-UPI Subscription Order (pays into Retailza's own VPA)
     order_res = client.post("/api/subscriptions/create-order", headers=headers)
     assert order_res.status_code == 200
     order_data = order_res.json()
-    assert "key_id" not in order_data
     assert order_data["upi_intent"].startswith("upi://pay")
+    assert order_data["upi_id"] == "retailza@okhdfcbank"
     assert Decimal(str(order_data["amount"])) == Decimal("49.00")
 
 
