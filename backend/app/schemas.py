@@ -141,20 +141,25 @@ class SubscriptionResponse(BaseModel):
 
 
 class SubscriptionOrderResponse(BaseModel):
-    """UPI Gateway payment order for the subscription fee."""
+    """A direct-UPI payment order: pay the fee into Retailza's own UPI ID."""
     order_id: str
     amount: Decimal
     currency: str = "INR"
     subscription_id: int
-    payment_url: str
-    upi_intent: Optional[str] = None
-    expires_at: Optional[str] = None
-    test: bool = False
+    upi_id: str          # the collecting VPA, e.g. techmasters@okhdfcbank
+    payee_name: str
+    upi_intent: str      # upi://pay?... scannable / tappable
+    note: str
+
+
+class UtrSubmission(BaseModel):
+    """The 12-digit UTR / UPI reference the shop owner copies from their receipt."""
+    utr: str = Field(..., min_length=10, max_length=32)
 
 
 class SubscriptionPaymentStatusResponse(BaseModel):
     order_id: str
-    # PENDING, REVIEW (customer submitted UTR, awaiting confirmation), SUCCESS, EXPIRED, FAILED
+    # PENDING, REVIEW (UTR submitted, awaiting admin verify), SUCCESS, FAILED
     status: str
     message: Optional[str] = None
     subscription: SubscriptionResponse
@@ -406,6 +411,20 @@ class SendReminderRequest(BaseModel):
 class ExtendSubscriptionRequest(BaseModel):
     shop_id: int
     days: int = 30
+
+
+class AdminSubscriptionPaymentItem(BaseModel):
+    id: int
+    shop_id: int
+    shop_name: str
+    owner_name: str
+    mobile_number: Optional[str] = None
+    amount: Decimal
+    status: str
+    utr: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AnnouncementCreate(BaseModel):

@@ -168,8 +168,18 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  /// Asks the backend (which asks the gateway) whether the order is paid.
-  /// Returns null on a network error so callers can simply poll again.
+  /// Submits the UTR from the payment receipt. The backend verifies it and
+  /// (unless it is being reviewed) activates the subscription. Rethrows so the
+  /// screen can show a specific error (bad UTR, already used, etc.).
+  Future<SubscriptionPaymentStatus> submitSubscriptionUtr(String orderId, String utr) async {
+    final result = await _subscriptionService.submitUtr(orderId, utr);
+    _subscription = result.subscription;
+    notifyListeners();
+    return result;
+  }
+
+  /// Asks the backend for the latest status of a payment order.
+  /// Returns null on a network error so callers can simply retry.
   Future<SubscriptionPaymentStatus?> checkSubscriptionPayment(String orderId) async {
     try {
       final result = await _subscriptionService.getPaymentStatus(orderId);

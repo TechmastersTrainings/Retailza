@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,11 +9,11 @@ import '../providers/shop_provider.dart';
 import '../widgets/custom_button.dart';
 import 'payment_success_screen.dart';
 
-/// Pays the Retailza subscription through the TechMasters UPI Gateway.
+/// Pays the ₹49 Retailza subscription directly into Retailza's own UPI ID.
 ///
-/// The app only displays the gateway's payment details and polls the backend.
-/// The backend asks the gateway whether the order is paid; the app can never
-/// mark a payment as successful by itself.
+/// Flow: create an order -> show the UPI QR / intent -> owner pays with any UPI
+/// app -> owner enters the 12-digit UTR from the receipt -> the backend verifies
+/// it and activates the month. No payment aggregator and no middleman.
 class SubscriptionPaymentScreen extends StatefulWidget {
   const SubscriptionPaymentScreen({super.key});
 
@@ -22,39 +21,20 @@ class SubscriptionPaymentScreen extends StatefulWidget {
   State<SubscriptionPaymentScreen> createState() => _SubscriptionPaymentScreenState();
 }
 
-class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
-    with WidgetsBindingObserver {
-  static const Duration _pollInterval = Duration(seconds: 4);
-  static const Duration _maxPolling = Duration(minutes: 20);
-
+class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
   SubscriptionPaymentOrder? _order;
   String _status = 'PENDING';
   String? _statusMessage;
   bool _creatingOrder = false;
-  bool _checking = false;
-  bool _finished = false;
-  Timer? _pollTimer;
-  DateTime? _pollingStartedAt;
+  bool _submitting = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
+  final TextEditingController _utrController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _pollTimer?.cancel();
+    _utrController.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Returning from the UPI app: check immediately instead of waiting.
-    if (state == AppLifecycleState.resumed && _order != null && !_finished) {
-      _checkStatus();
-    }
   }
 
   Future<void> _createOrder() async {
@@ -72,10 +52,7 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
         _order = order;
         _creatingOrder = false;
       });
-      _startPolling();
-      if (order.upiIntent != null) {
-        await _openUpiApp();
-      }
+      await _openUpiApp();
     } catch (e) {
       if (!mounted) return;
       setState(() => _creatingOrder = false);
@@ -83,75 +60,44 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
     }
   }
 
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollingStartedAt = DateTime.now();
-    _pollTimer = Timer.periodic(_pollInterval, (_) {
-      final started = _pollingStartedAt;
-      if (started != null && DateTime.now().difference(started) > _maxPolling) {
-        _pollTimer?.cancel();
-        if (mounted) setState(() {});
-        return;
-      }
-      _checkStatus();
-    });
-  }
-
-  Future<void> _checkStatus({bool userInitiated = false}) async {
+  Future<void> _submitUtr() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final order = _order;
-    if (order == null || _checking || _finished) return;
+    if (order == null || _submitting) return;
 
     final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-    setState(() => _checking = true);
-    final result = await shopProvider.checkSubscriptionPayment(order.orderId);
-    if (!mounted) return;
+    final utr = _utrController.text.replaceAll(RegExp(r'\s+'), '');
+    setState(() => _submitting = true);
 
-    setState(() {
-      _checking = false;
-      if (result != null) {
+    try {
+      final result = await shopProvider.submitSubscriptionUtr(order.orderId, utr);
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
         _status = result.status;
         _statusMessage = result.message;
-      }
-    });
+      });
 
-    if (result == null) {
-      if (userInitiated) {
-        _showSnack("Could not reach Retailza server. Please try again.", AppColors.debtRed);
+      if (result.isPaid) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
+        );
       }
-      return;
-    }
-
-    if (result.isPaid) {
-      _finished = true;
-      _pollTimer?.cancel();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
-      );
-    } else if (result.isFinalFailure) {
-      _pollTimer?.cancel();
-    } else if (userInitiated && result.status == 'PENDING') {
-      _showSnack("Payment not received yet. If you paid, wait a few seconds and check again.",
-          AppColors.primary);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      _showSnack(e.toString(), AppColors.debtRed);
     }
   }
 
   Future<void> _openUpiApp() async {
     final intent = _order?.upiIntent;
-    if (intent == null) return;
+    if (intent == null || intent.isEmpty) return;
     final opened = await _launch(intent);
     if (!opened && mounted) {
-      _showSnack("No UPI app found. Scan the QR code from another phone or open the payment page.",
+      _showSnack("No UPI app found. Scan the QR from another phone, then enter the UTR below.",
           AppColors.debtRed);
-    }
-  }
-
-  Future<void> _openPaymentPage() async {
-    final url = _order?.paymentUrl;
-    if (url == null) return;
-    final opened = await _launch(url);
-    if (!opened && mounted) {
-      _showSnack("Could not open the payment page.", AppColors.debtRed);
     }
   }
 
@@ -165,21 +111,23 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
     }
   }
 
+  void _copyUpiId() {
+    final vpa = _order?.upiId;
+    if (vpa == null || vpa.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: vpa));
+    _showSnack("UPI ID copied", AppColors.primary);
+  }
+
   void _showSnack(String text, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text), backgroundColor: color, behavior: SnackBarBehavior.floating),
     );
   }
 
-  bool get _pollingStopped => _pollTimer == null || !_pollTimer!.isActive;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Pay with UPI"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Pay with UPI"), centerTitle: true),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -227,15 +175,11 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Retailza SaaS Plan (30 Days)",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
+                Text("Retailza SaaS Plan (30 Days)",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
-                Text(
-                  "Includes POS Billing & Khata modules",
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
+                Text("Includes POS Billing & Khata modules",
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -265,23 +209,9 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
 
   List<Widget> _buildPayment(SubscriptionPaymentOrder order) {
     return [
-      if (order.isTest)
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.debtRedLight,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Text(
-            "TEST MODE: this is a sandbox payment, no real money moves.",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.debtRed),
-          ),
-        ),
       _buildStatusBanner(),
       const SizedBox(height: 16),
-      if (order.upiIntent != null) ...[
+      if (order.upiIntent.isNotEmpty) ...[
         Center(
           child: Container(
             padding: const EdgeInsets.all(12),
@@ -291,43 +221,85 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
               border: Border.all(color: AppColors.cardBorder),
             ),
             child: QrImageView(
-              data: order.upiIntent!,
+              data: order.upiIntent,
               version: QrVersions.auto,
-              size: 220,
+              size: 200,
               backgroundColor: Colors.white,
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          "Scan from another phone, or tap below to pay from this phone",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
+        if (order.upiId.isNotEmpty)
+          InkWell(
+            onTap: _copyUpiId,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    order.upiId,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.copy, size: 16, color: AppColors.primary),
+              ],
+            ),
+          ),
+        const SizedBox(height: 14),
         CustomButton(
           text: "Pay with UPI app (UPI ऐप से भुगतान)",
           onPressed: _openUpiApp,
         ),
-        const SizedBox(height: 10),
       ],
-      OutlinedButton.icon(
-        onPressed: _openPaymentPage,
-        icon: const Icon(Icons.open_in_new, size: 18),
-        label: Text(order.upiIntent == null ? "Open secure payment page" : "Open payment page instead"),
-        style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+      const SizedBox(height: 22),
+      const Divider(),
+      const SizedBox(height: 10),
+      const Text(
+        "After paying, enter the 12-digit UTR / UPI reference number",
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        "You will find it in your UPI app's payment receipt / transaction details.",
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+      const SizedBox(height: 12),
+      Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _utrController,
+          keyboardType: TextInputType.number,
+          maxLength: 12,
+          enabled: _status != 'SUCCESS',
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: "12-digit UTR",
+            hintText: "e.g. 412345678901",
+            counterText: "",
+            border: OutlineInputBorder(),
+          ),
+          validator: (v) {
+            final value = (v ?? '').replaceAll(RegExp(r'\s+'), '');
+            if (!RegExp(r'^\d{12}$').hasMatch(value)) {
+              return "Enter the 12-digit reference number from your receipt";
+            }
+            return null;
+          },
+        ),
       ),
       const SizedBox(height: 10),
-      TextButton.icon(
-        onPressed: _checking ? null : () => _checkStatus(userInitiated: true),
-        icon: const Icon(Icons.refresh, size: 18),
-        label: const Text("I have paid, check status"),
+      CustomButton(
+        text: "Confirm payment (भुगतान की पुष्टि करें)",
+        isLoading: _submitting,
+        onPressed: _status == 'SUCCESS' ? null : _submitUtr,
       ),
-      if (_status == 'EXPIRED' || _status == 'FAILED' || _pollingStopped)
-        TextButton(
-          onPressed: _creatingOrder ? null : _createOrder,
-          child: const Text("Start a new payment"),
-        ),
+      const SizedBox(height: 10),
+      TextButton(
+        onPressed: _creatingOrder ? null : _createOrder,
+        child: const Text("Start a new payment"),
+      ),
     ];
   }
 
@@ -340,12 +312,8 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
       case 'REVIEW':
         icon = Icons.hourglass_top_rounded;
         color = AppColors.primary;
-        text = _statusMessage ?? "Your UTR is being verified.";
-        break;
-      case 'EXPIRED':
-        icon = Icons.timer_off_outlined;
-        color = AppColors.debtRed;
-        text = "This payment link expired. If money was deducted, tap 'check status'; otherwise start a new payment.";
+        text = _statusMessage ??
+            "UTR received. Your subscription will activate once we verify the payment.";
         break;
       case 'FAILED':
         icon = Icons.error_outline_rounded;
@@ -353,11 +321,9 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
         text = _statusMessage ?? "Payment could not be verified. Please contact Retailza support.";
         break;
       default:
-        icon = Icons.sync_rounded;
+        icon = Icons.qr_code_2_rounded;
         color = AppColors.primary;
-        text = _pollingStopped
-            ? "Stopped checking automatically. Tap 'check status' if you have paid."
-            : "Waiting for payment confirmation... (भुगतान की पुष्टि हो रही है)";
+        text = "Scan or tap to pay ₹49, then enter the UTR below to activate.";
     }
 
     return Container(
@@ -369,14 +335,7 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
       ),
       child: Row(
         children: [
-          if (_checking || (_status == 'PENDING' && !_pollingStopped))
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color),
-            )
-          else
-            Icon(icon, size: 20, color: color),
+          Icon(icon, size: 20, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
