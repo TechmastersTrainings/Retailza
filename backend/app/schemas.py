@@ -141,17 +141,23 @@ class SubscriptionResponse(BaseModel):
 
 
 class SubscriptionOrderResponse(BaseModel):
+    """UPI Gateway payment order for the subscription fee."""
     order_id: str
     amount: Decimal
     currency: str = "INR"
-    key_id: str
     subscription_id: int
+    payment_url: str
+    upi_intent: Optional[str] = None
+    expires_at: Optional[str] = None
+    test: bool = False
 
 
-class SubscriptionPaymentVerify(BaseModel):
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
+class SubscriptionPaymentStatusResponse(BaseModel):
+    order_id: str
+    # PENDING, REVIEW (customer submitted UTR, awaiting confirmation), SUCCESS, EXPIRED, FAILED
+    status: str
+    message: Optional[str] = None
+    subscription: SubscriptionResponse
 
 
 # --- Product Schemas ---

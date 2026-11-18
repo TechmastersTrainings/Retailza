@@ -30,9 +30,18 @@ class Settings(BaseSettings):
     SMS_PROVIDER: str = "fast2sms"
     FAST2SMS_API_KEY: str = ""
 
-    # Razorpay Subscription
-    RAZORPAY_KEY_ID: str = "rzp_test_TWXn6r1HPxwz0r"
-    RAZORPAY_KEY_SECRET: str = "6u35s2LHnOuWVlBWF94HP1by"
+    # Subscription payments via the self-hosted UPI Gateway.
+    # Set these on the server (Render dashboard); never commit real values.
+    # UPI_GATEWAY_BASE_URL is the gateway's public URL, e.g. https://pay.example.com
+    UPI_GATEWAY_BASE_URL: str = ""
+    UPI_GATEWAY_API_KEY: str = ""
+    UPI_GATEWAY_API_SECRET: str = ""
+    # Live webhook signing secret shown in the gateway dashboard (API & Webhooks).
+    UPI_GATEWAY_WEBHOOK_SECRET: str = ""
+    # Only for testing with gateway Sandbox keys (test_key_...). Sandbox payments
+    # are simulated and must never activate a subscription in production.
+    UPI_GATEWAY_ALLOW_SANDBOX: bool = False
+    UPI_GATEWAY_TIMEOUT_SECONDS: float = 15.0
     SUBSCRIPTION_AMOUNT: Decimal = Decimal("49.00")
 
     model_config = SettingsConfigDict(

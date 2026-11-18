@@ -1,12 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../core/constants/app_colors.dart';
 import '../providers/shop_provider.dart';
-import '../providers/auth_provider.dart';
 import '../widgets/custom_button.dart';
 import 'payment_success_screen.dart';
 
+/// Pays the Retailza subscription through the TechMasters UPI Gateway.
+///
+/// The app only displays the gateway's payment details and polls the backend.
+/// The backend asks the gateway whether the order is paid; the app can never
+/// mark a payment as successful by itself.
 class SubscriptionPaymentScreen extends StatefulWidget {
   const SubscriptionPaymentScreen({super.key});
 
@@ -14,267 +22,187 @@ class SubscriptionPaymentScreen extends StatefulWidget {
   State<SubscriptionPaymentScreen> createState() => _SubscriptionPaymentScreenState();
 }
 
-class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
-  String _selectedMethod = "UPI"; // UPI, CARD, NETBANKING
-  late Razorpay _razorpay;
-  String? _currentOrderId;
-  bool _isProcessing = false;
+class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen>
+    with WidgetsBindingObserver {
+  static const Duration _pollInterval = Duration(seconds: 4);
+  static const Duration _maxPolling = Duration(minutes: 20);
+
+  SubscriptionPaymentOrder? _order;
+  String _status = 'PENDING';
+  String? _statusMessage;
+  bool _creatingOrder = false;
+  bool _checking = false;
+  bool _finished = false;
+  Timer? _pollTimer;
+  DateTime? _pollingStartedAt;
 
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    _razorpay.clear();
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _initiateRazorpayPayment() async {
-    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    setState(() => _isProcessing = true);
-
-    try {
-      final orderData = await shopProvider.createSubscriptionOrder();
-      _currentOrderId = orderData['order_id'] as String?;
-      final keyId = orderData['key_id'] as String? ?? "rzp_test_TWXn6r1HPxwz0r";
-      final rawAmount = orderData['amount'];
-      final amountInPaise = (double.parse(rawAmount.toString()) * 100).toInt();
-
-      final mobile = authProvider.user?.mobileNumber ?? "";
-      final shopName = shopProvider.shop?.shopName ?? "Kirana Store";
-
-      var options = {
-        'key': keyId,
-        'amount': amountInPaise,
-        'name': 'Retailza Kirana SaaS',
-        'description': '30-Day Subscription for $shopName',
-        'order_id': _currentOrderId,
-        'timeout': 300,
-        'prefill': {
-          'contact': mobile,
-          'email': 'support@retailza.in',
-        },
-        'theme': {
-          'color': '#0F172A',
-        },
-        'external': {
-          'wallets': ['paytm']
-        }
-      };
-
-      _razorpay.open(options);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Failed to initialize payment: ${e.toString()}"),
-          backgroundColor: AppColors.debtRed,
-        ),
-      );
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning from the UPI app: check immediately instead of waiting.
+    if (state == AppLifecycleState.resumed && _order != null && !_finished) {
+      _checkStatus();
     }
   }
 
-  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  Future<void> _createOrder() async {
     final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+    setState(() {
+      _creatingOrder = true;
+      _statusMessage = null;
+      _status = 'PENDING';
+    });
 
-    final success = await shopProvider.verifySubscriptionPayment(
-      orderId: response.orderId ?? _currentOrderId ?? '',
-      paymentId: response.paymentId ?? '',
-      signature: response.signature ?? '',
-    );
+    try {
+      final order = await shopProvider.createSubscriptionOrder();
+      if (!mounted) return;
+      setState(() {
+        _order = order;
+        _creatingOrder = false;
+      });
+      _startPolling();
+      if (order.upiIntent != null) {
+        await _openUpiApp();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _creatingOrder = false);
+      _showSnack("Could not start payment: ${e.toString()}", AppColors.debtRed);
+    }
+  }
 
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollingStartedAt = DateTime.now();
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
+      final started = _pollingStartedAt;
+      if (started != null && DateTime.now().difference(started) > _maxPolling) {
+        _pollTimer?.cancel();
+        if (mounted) setState(() {});
+        return;
+      }
+      _checkStatus();
+    });
+  }
+
+  Future<void> _checkStatus({bool userInitiated = false}) async {
+    final order = _order;
+    if (order == null || _checking || _finished) return;
+
+    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+    setState(() => _checking = true);
+    final result = await shopProvider.checkSubscriptionPayment(order.orderId);
     if (!mounted) return;
-    setState(() => _isProcessing = false);
 
-    if (success) {
+    setState(() {
+      _checking = false;
+      if (result != null) {
+        _status = result.status;
+        _statusMessage = result.message;
+      }
+    });
+
+    if (result == null) {
+      if (userInitiated) {
+        _showSnack("Could not reach Retailza server. Please try again.", AppColors.debtRed);
+      }
+      return;
+    }
+
+    if (result.isPaid) {
+      _finished = true;
+      _pollTimer?.cancel();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(shopProvider.errorMessage ?? "Payment verification failed"),
-          backgroundColor: AppColors.debtRed,
-        ),
-      );
+    } else if (result.isFinalFailure) {
+      _pollTimer?.cancel();
+    } else if (userInitiated && result.status == 'PENDING') {
+      _showSnack("Payment not received yet. If you paid, wait a few seconds and check again.",
+          AppColors.primary);
     }
   }
 
-  void _handlePaymentError(PaymentFailureResponse response) {
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Payment failed: ${response.message ?? 'Transaction cancelled'}"),
-        backgroundColor: AppColors.debtRed,
-      ),
-    );
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("External wallet selected: ${response.walletName}"),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-  }
-
-  Future<void> _processMockSandboxPayment() async {
-    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-
-    final success = await shopProvider.completeMockPayment();
-
-    if (!mounted) return;
-
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(shopProvider.errorMessage ?? "Payment processing failed"),
-          backgroundColor: AppColors.debtRed,
-        ),
-      );
-      return;
+  Future<void> _openUpiApp() async {
+    final intent = _order?.upiIntent;
+    if (intent == null) return;
+    final opened = await _launch(intent);
+    if (!opened && mounted) {
+      _showSnack("No UPI app found. Scan the QR code from another phone or open the payment page.",
+          AppColors.debtRed);
     }
+  }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const PaymentSuccessScreen()),
+  Future<void> _openPaymentPage() async {
+    final url = _order?.paymentUrl;
+    if (url == null) return;
+    final opened = await _launch(url);
+    if (!opened && mounted) {
+      _showSnack("Could not open the payment page.", AppColors.debtRed);
+    }
+  }
+
+  Future<bool> _launch(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _showSnack(String text, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), backgroundColor: color, behavior: SnackBarBehavior.floating),
     );
   }
+
+  bool get _pollingStopped => _pollTimer == null || !_pollTimer!.isActive;
 
   @override
   Widget build(BuildContext context) {
-    final shopProvider = Provider.of<ShopProvider>(context);
-    final isLoading = _isProcessing || shopProvider.isLoading;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Razorpay Secure Checkout"),
+        title: const Text("Pay with UPI"),
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Retailza SaaS Plan (30 Days)",
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Includes POS Billing & Khata modules",
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ],
+              _buildPlanCard(),
+              const SizedBox(height: 20),
+              if (_order == null) ..._buildStart() else ..._buildPayment(_order!),
+              const SizedBox(height: 20),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.lock, size: 14, color: AppColors.textSecondary),
+                  SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      "Payment is confirmed by the Retailza server, not the app",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
-                    Text(
-                      "₹49.00",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-              const Text(
-                "Select Payment Method",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _buildPaymentTile(
-                title: "UPI (Google Pay / PhonePe / Paytm)",
-                subtitle: "Instant payment with any UPI app",
-                icon: Icons.qr_code_2,
-                id: "UPI",
-              ),
-              const SizedBox(height: 10),
-              _buildPaymentTile(
-                title: "Debit / Credit Card",
-                subtitle: "Visa, Mastercard, RuPay",
-                icon: Icons.credit_card,
-                id: "CARD",
-              ),
-              const SizedBox(height: 10),
-              _buildPaymentTile(
-                title: "Net Banking",
-                subtitle: "All Indian national & private banks",
-                icon: Icons.account_balance,
-                id: "NETBANKING",
-              ),
-              const Spacer(),
-              CustomButton(
-                text: "Pay ₹49.00 Now (सुरक्षित भुगतान)",
-                isLoading: isLoading,
-                onPressed: _initiateRazorpayPayment,
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton.icon(
-                  onPressed: isLoading ? null : _processMockSandboxPayment,
-                  icon: const Icon(Icons.flash_on, size: 16, color: AppColors.textMuted),
-                  label: const Text(
-                    "Dev Sandbox Bypass (Emulator Instant Activate)",
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.lock, size: 14, color: AppColors.textSecondary),
-                        SizedBox(width: 4),
-                        Text(
-                          "100% Encrypted & Verified by Razorpay",
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Supported: UPI Intent • Cards • NetBanking",
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ],
           ),
@@ -283,58 +211,177 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
     );
   }
 
-  Widget _buildPaymentTile({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required String id,
-  }) {
-    final bool isSelected = _selectedMethod == id;
+  Widget _buildPlanCard() {
+    final amount = _order?.amount ?? 49.0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Retailza SaaS Plan (30 Days)",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Includes POS Billing & Khata modules",
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            "₹${amount.toStringAsFixed(2)}",
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return InkWell(
-      onTap: () => setState(() => _selectedMethod = id),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryLight.withValues(alpha: 0.08) : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.cardBorder,
-            width: isSelected ? 1.8 : 1.0,
+  List<Widget> _buildStart() {
+    return [
+      const Text(
+        "Pay instantly with Google Pay, PhonePe, Paytm, BHIM or any UPI app.",
+        style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+      ),
+      const SizedBox(height: 20),
+      CustomButton(
+        text: "Pay ₹49.00 with UPI (भुगतान करें)",
+        isLoading: _creatingOrder,
+        onPressed: _createOrder,
+      ),
+    ];
+  }
+
+  List<Widget> _buildPayment(SubscriptionPaymentOrder order) {
+    return [
+      if (order.isTest)
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.debtRedLight,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            "TEST MODE: this is a sandbox payment, no real money moves.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.debtRed),
           ),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 24),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
+      _buildStatusBanner(),
+      const SizedBox(height: 16),
+      if (order.upiIntent != null) ...[
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.cardBorder),
             ),
-            Radio<String>(
-              value: id,
-              groupValue: _selectedMethod,
-              activeColor: AppColors.primary,
-              onChanged: (val) => setState(() => _selectedMethod = val!),
+            child: QrImageView(
+              data: order.upiIntent!,
+              version: QrVersions.auto,
+              size: 220,
+              backgroundColor: Colors.white,
             ),
-          ],
+          ),
         ),
+        const SizedBox(height: 8),
+        const Text(
+          "Scan from another phone, or tap below to pay from this phone",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 16),
+        CustomButton(
+          text: "Pay with UPI app (UPI ऐप से भुगतान)",
+          onPressed: _openUpiApp,
+        ),
+        const SizedBox(height: 10),
+      ],
+      OutlinedButton.icon(
+        onPressed: _openPaymentPage,
+        icon: const Icon(Icons.open_in_new, size: 18),
+        label: Text(order.upiIntent == null ? "Open secure payment page" : "Open payment page instead"),
+        style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+      ),
+      const SizedBox(height: 10),
+      TextButton.icon(
+        onPressed: _checking ? null : () => _checkStatus(userInitiated: true),
+        icon: const Icon(Icons.refresh, size: 18),
+        label: const Text("I have paid, check status"),
+      ),
+      if (_status == 'EXPIRED' || _status == 'FAILED' || _pollingStopped)
+        TextButton(
+          onPressed: _creatingOrder ? null : _createOrder,
+          child: const Text("Start a new payment"),
+        ),
+    ];
+  }
+
+  Widget _buildStatusBanner() {
+    late final IconData icon;
+    late final Color color;
+    late final String text;
+
+    switch (_status) {
+      case 'REVIEW':
+        icon = Icons.hourglass_top_rounded;
+        color = AppColors.primary;
+        text = _statusMessage ?? "Your UTR is being verified.";
+        break;
+      case 'EXPIRED':
+        icon = Icons.timer_off_outlined;
+        color = AppColors.debtRed;
+        text = "This payment link expired. If money was deducted, tap 'check status'; otherwise start a new payment.";
+        break;
+      case 'FAILED':
+        icon = Icons.error_outline_rounded;
+        color = AppColors.debtRed;
+        text = _statusMessage ?? "Payment could not be verified. Please contact Retailza support.";
+        break;
+      default:
+        icon = Icons.sync_rounded;
+        color = AppColors.primary;
+        text = _pollingStopped
+            ? "Stopped checking automatically. Tap 'check status' if you have paid."
+            : "Waiting for payment confirmation... (भुगतान की पुष्टि हो रही है)";
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          if (_checking || (_status == 'PENDING' && !_pollingStopped))
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            )
+          else
+            Icon(icon, size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+          ),
+        ],
       ),
     );
   }

@@ -33,9 +33,14 @@ services:
         value: fast2sms
       - key: FAST2SMS_API_KEY
         value: hXIfLmtDixvHZy1VnkFojqzBs0Ju3EKe6MAG9QgcCTlr7ap4wdpG2QYqSEsaCzPojAei06hb34fNgKdl
-      - key: RAZORPAY_KEY_ID
-        value: rzp_test_TWXn6r1HPxwz0r
-      - key: RAZORPAY_KEY_SECRET
-        value: 6u35s2LHnOuWVlBWF94HP1by
+      # UPI Gateway subscription payments: set values in the Render dashboard.
+      - key: UPI_GATEWAY_BASE_URL
+        sync: false
+      - key: UPI_GATEWAY_API_KEY
+        sync: false
+      - key: UPI_GATEWAY_API_SECRET
+        sync: false
+      - key: UPI_GATEWAY_WEBHOOK_SECRET
+        sync: false
       - key: SUBSCRIPTION_AMOUNT
         value: "49.00"

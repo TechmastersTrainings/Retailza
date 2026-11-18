@@ -3,6 +3,7 @@ import '../models/shop_model.dart';
 import '../models/subscription_model.dart';
 import '../services/shop_service.dart';
 import '../services/subscription_service.dart';
+export '../services/subscription_service.dart' show SubscriptionPaymentOrder, SubscriptionPaymentStatus;
 import '../core/network/api_client.dart';
 
 class ShopProvider extends ChangeNotifier {
@@ -148,7 +149,8 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> createSubscriptionOrder() async {
+  /// Creates a UPI Gateway payment order for the subscription fee.
+  Future<SubscriptionPaymentOrder> createSubscriptionOrder() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -166,54 +168,17 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> verifySubscriptionPayment({
-    required String orderId,
-    required String paymentId,
-    required String signature,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+  /// Asks the backend (which asks the gateway) whether the order is paid.
+  /// Returns null on a network error so callers can simply poll again.
+  Future<SubscriptionPaymentStatus?> checkSubscriptionPayment(String orderId) async {
     try {
-      _subscription = await _subscriptionService.verifyPayment(
-        orderId: orderId,
-        paymentId: paymentId,
-        signature: signature,
-      );
-      _isLoading = false;
+      final result = await _subscriptionService.getPaymentStatus(orderId);
+      _subscription = result.subscription;
       notifyListeners();
-      return true;
+      return result;
     } catch (e) {
-      _isLoading = false;
       _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> completeMockPayment() async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      final order = await _subscriptionService.createOrder();
-      final orderId = order['order_id'] as String;
-
-      _subscription = await _subscriptionService.verifyPayment(
-        orderId: orderId,
-        paymentId: "pay_test_kirana_live",
-        signature: "mock_valid_signature",
-      );
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
+      return null;
     }
   }
 }

@@ -65,7 +65,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     _buildRow("Status", "ACTIVE (सक्रिय)"),
                     const SizedBox(height: 10),
-                    _buildRow("Payment Mode", "Razorpay Secured"),
+                    _buildRow("Payment Mode", "UPI (server verified)"),
                   ],
                 ),
               ),
