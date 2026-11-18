@@ -5,7 +5,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../providers/language_provider.dart';
 
 class UpiQrHelper {
   // A clean, sample SVG-like base64 Kirana QR for instant testing if on emulator or web
@@ -118,6 +120,7 @@ class UpiQrHelper {
     String? currentUpiId,
     String? currentImage,
   }) async {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     final upiIdController = TextEditingController(text: currentUpiId ?? "");
     String? selectedBase64 = currentImage;
 
@@ -221,9 +224,9 @@ class UpiQrHelper {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          "Store UPI Scanner (QR कोड)",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        Text(
+                          lang.storeUpiScanner,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close),
@@ -300,7 +303,7 @@ class UpiQrHelper {
                           child: OutlinedButton.icon(
                             onPressed: isProcessing ? null : () => pickImage(ImageSource.gallery),
                             icon: const Icon(Icons.photo_library_outlined, size: 18),
-                            label: const Text("Gallery (गैलरी)", style: TextStyle(fontSize: 12)),
+                            label: Text(lang.galleryLabel, style: const TextStyle(fontSize: 12)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.upiPurple,
                               side: const BorderSide(color: AppColors.upiPurple),
@@ -314,7 +317,7 @@ class UpiQrHelper {
                           child: OutlinedButton.icon(
                             onPressed: isProcessing ? null : () => pickImage(ImageSource.camera),
                             icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                            label: const Text("Camera (कैमरा)", style: TextStyle(fontSize: 12)),
+                            label: Text(lang.cameraLabel, style: const TextStyle(fontSize: 12)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
                               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -335,7 +338,7 @@ class UpiQrHelper {
                                 });
                               },
                         icon: const Icon(Icons.qr_code, size: 16),
-                        label: const Text("Use Sample Test QR (सैंपल क्यूआर)", style: TextStyle(fontSize: 12)),
+                        label: Text(lang.sampleQrLabel, style: const TextStyle(fontSize: 12)),
                       ),
                     ),
                     const Divider(height: 24),
@@ -367,7 +370,7 @@ class UpiQrHelper {
                         minimumSize: const Size(double.infinity, 48),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text("Save QR Details (सुरक्षित करें)", style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(lang.saveQrDetails, style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

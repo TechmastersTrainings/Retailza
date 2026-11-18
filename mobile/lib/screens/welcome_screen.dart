@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../providers/language_provider.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/language_toggle_badge.dart';
 import 'login_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -8,14 +11,21 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top Language Switcher Bar
+              Align(
+                alignment: Alignment.centerRight,
+                child: const LanguageToggleBadge(),
+              ),
               const Spacer(flex: 1),
 
               // Logo & App Name
@@ -54,15 +64,17 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                       decoration: BoxDecoration(
                         color: AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        "डिजिटल बहीखाता और बिलिंग मशीन",
-                        style: TextStyle(
-                          fontSize: 14,
+                      child: Text(
+                        lang.isKannada
+                            ? "ಡಿಜಿಟಲ್ ಖಾತಾ ಮತ್ತು ಬಿಲ್ಲಿಂಗ್ ಮೆಷಿನ್"
+                            : "डिजिटल बहीखाता और बिलिंग मशीन",
+                        style: const TextStyle(
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
                         ),
@@ -78,9 +90,11 @@ class WelcomeScreen extends StatelessWidget {
                 icon: Icons.receipt_long_rounded,
                 iconColor: AppColors.primary,
                 bgColor: AppColors.primarySurface,
-                title: "10-Second Fast Billing",
-                hindiTitle: "तेज़ बिलिंग और रसीद",
-                subtitle: "Instant billing receipt with live profit capture",
+                title: "10-Sec Fast Billing",
+                localizedTag: lang.raw(kn: "ವೇಗದ ಬಿಲ್ಲಿಂಗ್", hi: "तेज़ बिलिंग"),
+                subtitle: lang.isKannada
+                    ? "ತ್ವರಿತ ರಶೀದಿ ಮತ್ತು ನೇರ ಲಾಭ ಲೆಕ್ಕಾಚಾರ"
+                    : "Instant billing receipt with live profit capture",
               ),
               const SizedBox(height: 14),
               _buildFeatureItem(
@@ -88,8 +102,10 @@ class WelcomeScreen extends StatelessWidget {
                 iconColor: AppColors.debtRed,
                 bgColor: AppColors.debtRedLight,
                 title: "Customer Khata",
-                hindiTitle: "उधार बहीखाता",
-                subtitle: "Track customer balances, send reminders & receive payments",
+                localizedTag: lang.raw(kn: "ಉದ್ದರಿ ಖಾತೆ", hi: "उधार खाता"),
+                subtitle: lang.isKannada
+                    ? "ಗ್ರಾಹಕರ ಬಾಕಿ ಉಳಿಕೆ, ಜ್ಞಾಪನೆ ಮತ್ತು ಪಾವತಿಗಳು"
+                    : "Track customer balances, send reminders & receive payments",
               ),
               const SizedBox(height: 14),
               _buildFeatureItem(
@@ -97,14 +113,16 @@ class WelcomeScreen extends StatelessWidget {
                 iconColor: AppColors.success,
                 bgColor: AppColors.successLight,
                 title: "Live Inventory & Alerts",
-                hindiTitle: "स्टॉक प्रबंधन",
-                subtitle: "Fractional weights (kg/gram/litre) with low-stock warnings",
+                localizedTag: lang.raw(kn: "ದಾಸ್ತಾನು ನಿರ್ವಹಣೆ", hi: "स्टॉक प्रबंधन"),
+                subtitle: lang.isKannada
+                    ? "ಕಡಿಮೆ ದಾಸ್ತಾನು ಎಚ್ಚರಿಕೆ ಮತ್ತು ನಿಖರ ತೂಕ ಲೆಕ್ಕ"
+                    : "Fractional weights (kg/gram/litre) with low-stock warnings",
               ),
               const Spacer(flex: 2),
 
               // CTA Button
               CustomButton(
-                text: "Get Started / शुरू करें",
+                text: lang.isKannada ? "Get Started / ಪ್ರಾರಂಭಿಸಿ" : "Get Started / शुरू करें",
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -136,7 +154,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      "© 2026 TechMasters Innovations Private Limited",
+                      "© 2026 Techmasters Innovations Private Limited",
                       style: TextStyle(fontSize: 10.5, color: AppColors.textMuted),
                     ),
                   ],
@@ -154,7 +172,7 @@ class WelcomeScreen extends StatelessWidget {
     required Color iconColor,
     required Color bgColor,
     required String title,
-    String? hindiTitle,
+    String? localizedTag,
     required String subtitle,
   }) {
     return Container(
@@ -190,10 +208,10 @@ class WelcomeScreen extends StatelessWidget {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    if (hindiTitle != null) ...[
+                    if (localizedTag != null) ...[
                       const SizedBox(width: 6),
                       Text(
-                        "($hindiTitle)",
+                        "($localizedTag)",
                         style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,

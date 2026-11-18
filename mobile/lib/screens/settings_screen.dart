@@ -10,6 +10,8 @@ import 'inventory_screen.dart';
 import 'welcome_screen.dart';
 import 'legal_screen.dart';
 import '../core/constants/legal_content.dart';
+import '../providers/language_provider.dart';
+import '../widgets/language_toggle_badge.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -53,14 +55,15 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _handleDeleteAccount(BuildContext context, AuthProvider auth) async {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
-          children: const [
-            Icon(Icons.warning_amber_rounded, color: AppColors.debtRed, size: 24),
-            SizedBox(width: 8),
-            Text("Delete Account? (खाता हटाएं)"),
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.debtRed, size: 24),
+            const SizedBox(width: 8),
+            Text(lang.deleteAccountLabel),
           ],
         ),
         content: const Text(
@@ -116,14 +119,116 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
+    final lang = Provider.of<LanguageProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Settings & Store (सेटिंग्स)"),
+        title: Text(lang.settingsTitle),
+        actions: const [
+          LanguageToggleBadge(),
+          SizedBox(width: 8),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Language Preference Card
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.2),
+              boxShadow: AppColors.softShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySurface,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.language_rounded, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            lang.isKannada ? "App Language (ಭಾಷಾ ಆಯ್ಕೆ)" : "App Language (भाषा चयन)",
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          ),
+                          Text(
+                            "Active: ${lang.currentDisplayName}",
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const LanguageToggleBadge(),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => lang.setLanguage(LanguageMode.kannada),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: lang.isKannada ? AppColors.primary : AppColors.background,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: lang.isKannada ? AppColors.primary : AppColors.cardBorder),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "English (ಕನ್ನಡ)",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: lang.isKannada ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => lang.setLanguage(LanguageMode.hindi),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: lang.isHindi ? AppColors.primary : AppColors.background,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: lang.isHindi ? AppColors.primary : AppColors.cardBorder),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "English (हिंदी)",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: lang.isHindi ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           _menuTile(
             icon: Icons.store_rounded,
             title: "Store & Owner Profile",
@@ -170,9 +275,9 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          const Text(
-            "Legal & Compliance (नीतियां और कॉपीराइट)",
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+          Text(
+            lang.t("Legal & Compliance", kn: "ನಿಯಮಗಳು ಮತ್ತು ನೀತಿಗಳು", hi: "नीतियां और कॉपीराइट"),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
           _menuTile(
@@ -230,7 +335,7 @@ class SettingsScreen extends StatelessWidget {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text("Logout (लॉग आउट)"),
+                  title: Text(lang.logoutLabel),
                   content: const Text("Are you sure you want to log out of Retailza?"),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
@@ -254,7 +359,7 @@ class SettingsScreen extends StatelessWidget {
               }
             },
             icon: const Icon(Icons.logout),
-            label: const Text("Logout (लॉग आउट करें)"),
+            label: Text(lang.logoutLabel),
           ),
           const SizedBox(height: 12),
           TextButton.icon(
@@ -263,9 +368,9 @@ class SettingsScreen extends StatelessWidget {
             ),
             onPressed: () => _handleDeleteAccount(context, auth),
             icon: const Icon(Icons.delete_forever_rounded, size: 20),
-            label: const Text(
-              "Delete Account & Shop Data (खाता और दुकान डेटा हटाएं)",
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            label: Text(
+              lang.t("Delete Account & Shop Data", kn: "ಖಾತೆ ಮತ್ತು ಅಂಗಡಿ ಡೇಟಾ ಅಳಿಸಿ", hi: "खाता और दुकान डेटा हटाएं"),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
           const SizedBox(height: 20),

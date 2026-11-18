@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../providers/language_provider.dart';
 
 class PaymentMethodSelector extends StatelessWidget {
   final String selectedMode; // 'CASH', 'UPI', 'CREDIT'
@@ -13,11 +15,12 @@ class PaymentMethodSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Row(
       children: [
         Expanded(
           child: _buildOption(
-            title: "Cash (नकद)",
+            title: lang.cashTitle,
             mode: "CASH",
             icon: Icons.payments_rounded,
             activeColor: AppColors.success,
@@ -27,7 +30,7 @@ class PaymentMethodSelector extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _buildOption(
-            title: "UPI (ऑनलाइन)",
+            title: lang.upiTitle,
             mode: "UPI",
             icon: Icons.qr_code_2_rounded,
             activeColor: AppColors.upiPurple,
@@ -37,7 +40,7 @@ class PaymentMethodSelector extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _buildOption(
-            title: "Khata (उधार)",
+            title: lang.khataTitle,
             mode: "CREDIT",
             icon: Icons.menu_book_rounded,
             activeColor: AppColors.debtRed,

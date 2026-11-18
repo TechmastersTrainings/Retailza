@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/shop_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/language_provider.dart';
 import 'core/constants/api_constants.dart';
 import 'core/network/api_client.dart';
 import 'screens/splash_screen.dart';
@@ -23,6 +24,7 @@ class RetailzaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),

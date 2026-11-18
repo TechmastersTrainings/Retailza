@@ -15,6 +15,8 @@ import 'inventory_screen.dart';
 import 'add_product_screen.dart';
 import 'bulk_add_products_screen.dart';
 import 'sales_history_screen.dart';
+import '../widgets/language_toggle_badge.dart';
+import '../providers/language_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -67,6 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final shopProvider = Provider.of<ShopProvider>(context);
+    final lang = Provider.of<LanguageProvider>(context);
 
     final shopName = shopProvider.shop?.shopName ?? authProvider.shop?.shopName ?? "Kirana Store";
     final ownerName = shopProvider.shop?.ownerName ?? authProvider.user?.name ?? "Shopkeeper";
@@ -160,6 +163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
+          const LanguageToggleBadge(),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.textPrimary),
             onPressed: _loadMetrics,
@@ -269,9 +273,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                               const SizedBox(height: 1),
-                              const Text(
-                                "सामान खत्म होने वाला है - Tap to view",
-                                style: TextStyle(color: AppColors.warningDark, fontSize: 11),
+                              Text(
+                                lang.isKannada ? "ದಾಸ್ತಾನು ಕಡಿಮೆಯಾಗಿದೆ - ವಿವರ ವೀಕ್ಷಿಸಿ" : "सामान खत्म होने वाला है - Tap to view",
+                                style: const TextStyle(color: AppColors.warningDark, fontSize: 11),
                               ),
                             ],
                           ),
@@ -386,20 +390,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: const Icon(Icons.upload_file_rounded, color: Colors.white, size: 22),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Bulk Product Upload (थोक सामान जोड़ें)",
-                                  style: TextStyle(
+                                  lang.t("Bulk Product Upload", kn: "ಸಗಟು ವಸ್ತುಗಳು", hi: "थोक सामान जोड़ें"),
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 13,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                SizedBox(height: 2),
-                                Text(
+                                const SizedBox(height: 2),
+                                const Text(
                                   "Upload Excel (.xlsx) or Word (.docx) to add items in bulk",
                                   style: TextStyle(
                                     fontSize: 11,

@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/shop_categories.dart';
 import '../providers/auth_provider.dart';
+import '../providers/language_provider.dart';
 import '../providers/shop_provider.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/language_toggle_badge.dart';
 import '../widgets/upi_qr_helper.dart';
 import 'subscription_screen.dart';
 import 'main_navigation_screen.dart';
@@ -126,15 +128,20 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final shopProvider = Provider.of<ShopProvider>(context);
+    final lang = context.watch<LanguageProvider>();
     final selectedCatInfo = ShopCategories.getCategoryById(_selectedCategory);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          "Store Profile Setup",
-          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.2),
+        title: Text(
+          lang.t("Store Setup", kn: "ಅಂಗಡಿ ವಿವರಗಳು", hi: "दुकान सेटअप"),
+          style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.2),
         ),
+        actions: const [
+          LanguageToggleBadge(),
+          SizedBox(width: 8),
+        ],
         centerTitle: true,
       ),
       body: SafeArea(
@@ -193,15 +200,17 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
-                                  "Shop Category (दुकान की श्रेणी) *",
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                  "${lang.t("Shop Category", kn: "ಅಂಗಡಿಯ ವರ್ಗ", hi: "दुकान की श्रेणी")} *",
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  "Select your shop type to auto-configure products",
-                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  lang.isKannada
+                                      ? "ವಸ್ತುಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಕಾನ್ಫಿಗರ್ ಮಾಡಲು ಅಂಗಡಿ ಮಾದರಿ ಆಯ್ಕೆಮಾಡಿ"
+                                      : "Select your shop type to auto-configure products",
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                                 ),
                               ],
                             ),
@@ -234,7 +243,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    cat.displayName,
+                                    cat.getDisplayName(lang.isKannada),
                                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -294,21 +303,21 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
 
                 // 2. Shop Name & Owner Name
                 CustomTextField(
-                  label: "Shop Name (दुकान का नाम) *",
+                  label: "${lang.shopNameLabel} *",
                   hint: _shopNameHint,
                   controller: _shopNameController,
                   validator: (v) => (v == null || v.trim().isEmpty) ? "Store name is required" : null,
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
-                  label: "Owner Name (दुकानदार का नाम) *",
+                  label: "${lang.ownerNameLabel} *",
                   hint: "e.g. Satish Sharma",
                   controller: _ownerNameController,
                   validator: (v) => (v == null || v.trim().isEmpty) ? "Owner name is required" : null,
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
-                  label: "Store Address (पता)",
+                  label: lang.storeAddressLabel,
                   hint: "Shop No. 12, Main Market",
                   controller: _addressController,
                 ),
@@ -317,16 +326,16 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                   children: [
                     Expanded(
                       child: CustomTextField(
-                        label: "City (शहर)",
-                        hint: "e.g. Pune, Jaipur",
+                        label: lang.cityLabel,
+                        hint: "e.g. Bengaluru, Hubballi",
                         controller: _cityController,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: CustomTextField(
-                        label: "State (राज्य)",
-                        hint: "e.g. Maharashtra",
+                        label: lang.stateLabel,
+                        hint: "e.g. Karnataka",
                         controller: _stateController,
                       ),
                     ),
@@ -334,8 +343,8 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
-                  label: "Pincode (पिनकोड)",
-                  hint: "6-digit PIN (e.g. 411001)",
+                  label: lang.pincodeLabel,
+                  hint: "6-digit PIN (e.g. 560001)",
                   controller: _pincodeController,
                   keyboardType: TextInputType.number,
                 ),
@@ -428,7 +437,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                       ),
                       const SizedBox(height: 14),
                       CustomTextField(
-                        label: "UPI ID (वैकल्पिक)",
+                        label: lang.isKannada ? "UPI ID (ಐಚ್ಛಿಕ)" : "UPI ID (वैकल्पिक)",
                         hint: "उदा. sharma@okaxis",
                         controller: _upiIdController,
                       ),
@@ -438,7 +447,7 @@ class _ShopSetupScreenState extends State<ShopSetupScreen> {
                 const SizedBox(height: 28),
 
                 CustomButton(
-                  text: "Save & Continue (आगे बढ़ें)",
+                  text: lang.saveAndContinue,
                   isLoading: shopProvider.isLoading,
                   onPressed: _handleSetup,
                 ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../models/customer_model.dart';
+import '../providers/language_provider.dart';
 
 class CustomerCard extends StatelessWidget {
   final CustomerModel customer;
@@ -16,6 +18,7 @@ class CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     final bool hasDebt = customer.balance > 0;
 
     return Container(
@@ -112,7 +115,7 @@ class CustomerCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        hasDebt ? "Due (बाकी)" : "Settled (चुका दिया)",
+                        hasDebt ? lang.dueLabel : lang.settledLabel,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,

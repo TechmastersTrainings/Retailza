@@ -4,9 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/shop_categories.dart';
+import '../providers/language_provider.dart';
 import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/custom_button.dart';
+import '../widgets/language_toggle_badge.dart';
 
 class BulkAddProductsScreen extends StatefulWidget {
   const BulkAddProductsScreen({super.key});
@@ -37,17 +39,19 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          "Bulk Product Upload (थोक सामान)",
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        title: Text(
+          lang.bulkUploadTitle,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         actions: [
+          const LanguageToggleBadge(),
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),
-            tooltip: "How it works (सहायता)",
+            tooltip: lang.t("Help", kn: "ಸಹಾಯ", hi: "सहायता"),
             onPressed: _showTemplateGuideDialog,
           ),
           const SizedBox(width: 8),
@@ -62,11 +66,11 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Format Picker Card
-                  _buildFormatSelectorCard(),
+                  _buildFormatSelectorCard(lang),
                   const SizedBox(height: 16),
 
                   // Upload Drop Zone
-                  _buildFilePickerSection(),
+                  _buildFilePickerSection(lang),
                   const SizedBox(height: 16),
 
                   // Parse Results & Preview Section
@@ -89,7 +93,7 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
     );
   }
 
-  Widget _buildFormatSelectorCard() {
+  Widget _buildFormatSelectorCard(LanguageProvider lang) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -112,17 +116,19 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
                 child: const Icon(Icons.file_copy_rounded, color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Select File Format (फ़ाइल प्रकार चुनें)",
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary),
+                      lang.t("Select File Format", kn: "ಫೈಲ್ ಮಾದರಿ ಆಯ್ಕೆಮಾಡಿ", hi: "फ़ाइल प्रकार चुनें"),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary),
                     ),
                     Text(
-                      "Choose Excel sheet or Word document",
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      lang.isKannada
+                          ? "ಎಕ್ಸೆಲ್ ಅಥವಾ ವರ್ಡ್ ಡಾಕ್ಯುಮೆಂಟ್ ಆಯ್ಕೆಮಾಡಿ"
+                          : "Choose Excel sheet or Word document",
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
                 ),
@@ -213,7 +219,7 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
     );
   }
 
-  Widget _buildFilePickerSection() {
+  Widget _buildFilePickerSection(LanguageProvider lang) {
     final hasFile = _selectedFileName != null;
     return Container(
       padding: const EdgeInsets.all(18),
@@ -244,14 +250,16 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
             ),
             const SizedBox(height: 12),
             Text(
-              _fileFormat == "excel" ? "Select Excel File (.xlsx, .csv)" : "Select Word File (.docx)",
+              _fileFormat == "excel"
+                  ? lang.t("Select Excel File", kn: "ಎಕ್ಸೆಲ್ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ", hi: "एक्सेल फ़ाइल चुनें")
+                  : lang.t("Select Word File", kn: "ವರ್ಡ್ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ", hi: "वर्ड फ़ाइल चुनें"),
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
             Text(
               _fileFormat == "excel"
-                  ? "Upload spreadsheet containing product rows"
-                  : "Upload Word document with product table or list",
+                  ? (lang.isKannada ? "ವಸ್ತುಗಳ ಪಟ್ಟಿ ಇರುವ ಸ್ಪ್ರೆಡ್‌ಶೀಟ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ" : "Upload spreadsheet containing product rows")
+                  : (lang.isKannada ? "ಕೋಷ್ಟಕ ಇರುವ ವರ್ಡ್ ಡಾಕ್ಯುಮೆಂಟ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ" : "Upload Word document with product table or list"),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
@@ -271,8 +279,8 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
                 icon: const Icon(Icons.bolt_rounded, size: 20, color: Colors.amberAccent),
                 label: Text(
                   _fileFormat == "excel"
-                      ? "1-Tap Load Ready Excel Catalog (20 Items)"
-                      : "1-Tap Load Ready Word Catalog (20 Items)",
+                      ? (lang.isKannada ? "1-ಕ್ಲಿಕ್ ರೆಡಿ ಎಕ್ಸೆಲ್ ಲಿಸ್ಟ್ (20 ವಸ್ತುಗಳು)" : "1-Tap Load Ready Excel Catalog (20 Items)")
+                      : (lang.isKannada ? "1-ಕ್ಲಿಕ್ ರೆಡಿ ವರ್ಡ್ ಲಿಸ್ಟ್ (20 ವಸ್ತುಗಳು)" : "1-Tap Load Ready Word Catalog (20 Items)"),
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                 ),
               ),
@@ -291,7 +299,7 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.folder_open_rounded, size: 18, color: AppColors.primary),
-                    label: const Text("Browse from Phone", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    label: Text(lang.browseFromPhone, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -304,7 +312,7 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.help_outline_rounded, size: 16),
-                  label: const Text("Guide", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                  label: Text(lang.t("Guide", kn: "ಸಹಾಯ", hi: "गाइड"), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                 ),
               ],
             ),

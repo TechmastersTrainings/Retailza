@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../models/sale_model.dart';
+import '../providers/language_provider.dart';
 import '../widgets/custom_button.dart';
 import 'main_navigation_screen.dart';
 
@@ -13,6 +15,7 @@ class SaleSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
+    final lang = context.watch<LanguageProvider>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -70,7 +73,7 @@ class SaleSuccessScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text("Customer (ग्राहक):", style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                          Text("${lang.t("Customer", kn: "ಗ್ರಾಹಕರು", hi: "ग्राहक")}:", style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
                           Text(sale.customerName!, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                         ],
                       ),
@@ -108,10 +111,10 @@ class SaleSuccessScreen extends StatelessWidget {
                     ),
 
                     // Totals
-                    _receiptRow("Subtotal (सामान कुल)", "₹${sale.totalAmount.toStringAsFixed(2)}"),
+                    _receiptRow(lang.t("Subtotal", kn: "ಒಟ್ಟು ಮೊತ್ತ", hi: "सामान कुल"), "₹${sale.totalAmount.toStringAsFixed(2)}"),
                     if (sale.discount > 0) ...[
                       const SizedBox(height: 6),
-                      _receiptRow("Discount (छूट)", "-₹${sale.discount.toStringAsFixed(2)}", isDiscount: true),
+                      _receiptRow(lang.discountLabel, "-₹${sale.discount.toStringAsFixed(2)}", isDiscount: true),
                     ],
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
@@ -120,7 +123,7 @@ class SaleSuccessScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("Final Amount (कुल देय)", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        Text(lang.finalAmountLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                         Text(
                           "₹${sale.finalAmount.toStringAsFixed(2)}",
                           style: const TextStyle(
@@ -178,9 +181,9 @@ class SaleSuccessScreen extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.share, color: Color(0xFF16A34A)),
-                label: const Text(
-                  "Share on WhatsApp (रसीद भेजें)",
-                  style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w800),
+                label: Text(
+                  lang.shareWhatsApp,
+                  style: const TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.w800),
                 ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF16A34A), width: 1.5),
@@ -191,7 +194,7 @@ class SaleSuccessScreen extends StatelessWidget {
               const SizedBox(height: 12),
 
               CustomButton(
-                text: "Start Next Bill (अगला बिल)",
+                text: lang.startNextBill,
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
                     context,

@@ -7,6 +7,8 @@ import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/custom_button.dart';
 import 'bulk_add_products_screen.dart';
+import '../providers/language_provider.dart';
+import '../widgets/language_toggle_badge.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({Key? key}) : super(key: key);
@@ -171,6 +173,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
     final catInfo = ShopCategories.getCategoryById(_selectedShopCategory);
     final catalogPresets = catInfo.catalogPresets;
 
@@ -183,14 +186,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          "Add New Product (नया सामान)",
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        title: Text(
+          lang.addProductTitle,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         actions: [
+          const LanguageToggleBadge(),
           IconButton(
             icon: const Icon(Icons.playlist_add_rounded, size: 24),
-            tooltip: "Bulk Product Upload (थोक जोड़ें)",
+            tooltip: lang.bulkUploadTitle,
             onPressed: () {
               Navigator.push(
                 context,
@@ -241,18 +245,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 20),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Add 20+ Items in Bulk (थोक सामान जोड़ें)",
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                              lang.t("Add 20+ Items in Bulk", kn: "ಸಗಟು ವಸ್ತುಗಳು", hi: "थोक सामान जोड़ें"),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
-                              "1-Click Popular Catalog or Excel / Word",
-                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              lang.isKannada
+                                  ? "1-ಕ್ಲಿಕ್ ರೆಡಿಮೇಡ್ ಕ್ಯಾಟಲಾಗ್ ಅಥವಾ ಎಕ್ಸೆಲ್ / ವರ್ಡ್"
+                                  : "1-Click Popular Catalog or Excel / Word",
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
@@ -300,7 +306,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             ],
                           ),
                           Text(
-                            catInfo.hindiName,
+                            catInfo.getLocalizedName(lang.isKannada),
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                           ),
                         ],
@@ -318,7 +324,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               children: [
                                 Icon(cat.icon, color: cat.themeColor, size: 18),
                                 const SizedBox(width: 10),
-                                Text(cat.displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                Text(cat.getDisplayName(lang.isKannada), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                               ],
                             ),
                           );
@@ -331,9 +337,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 18),
 
               // 1. PRODUCT NAME DROPDOWN (ONLY NAMES, NO PRICES)
-              const Text(
-                "Product Name (सामान का नाम) *",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              Text(
+                lang.productNameLabel,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
@@ -346,25 +352,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.cardBorder)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.cardBorder)),
                 ),
-                hint: const Text("-- Select Product Name (सामान चुनें) --", style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+                hint: Text("-- ${lang.t("Select Product Name", kn: "ವಸ್ತು ಆಯ್ಕೆಮಾಡಿ", hi: "सामान चुनें")} --", style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
                 items: [
                   ...catalogPresets.map((preset) {
+                    final presetDisplayName = preset.getLocalizedName(lang.isKannada);
                     return DropdownMenuItem<String>(
                       value: preset.name,
                       child: Text(
-                        preset.name,
+                        presetDisplayName,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     );
                   }).toList(),
-                  const DropdownMenuItem<String>(
+                  DropdownMenuItem<String>(
                     value: "__custom__",
                     child: Row(
                       children: [
-                        Icon(Icons.edit_note_rounded, size: 18, color: AppColors.primary),
-                        SizedBox(width: 8),
-                        Text("✏️ Other / Custom Name (दूसरा नाम लिखें)", style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text("✏️ ${lang.t("Other / Custom Name", kn: "ಬೇರೆ ಹೆಸರು ಬರೆಯಿರಿ", hi: "दूसरा नाम लिखें")}", style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
                       ],
                     ),
                   ),
@@ -430,7 +437,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Category (श्रेणी)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(lang.categoryLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
                           value: _categories.contains(_selectedCategory) ? _selectedCategory : _categories.first,
@@ -452,7 +459,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Unit (इकाई)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(lang.unitLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
                           value: _units.contains(_selectedUnit) ? _selectedUnit : _units.first,
@@ -481,7 +488,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Purchase Cost (खरीद मूल्य)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(lang.purchasePriceLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<double>(
                           value: purchasePriceOptions.contains(_selectedPurchasePrice) ? _selectedPurchasePrice : purchasePriceOptions.first,
@@ -512,7 +519,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Selling Price (बिक्री मूल्य) *", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        Text("${lang.sellingPriceLabel} *", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<double>(
                           value: sellingPriceOptions.contains(_selectedSellingPrice) ? _selectedSellingPrice : sellingPriceOptions.first,
@@ -549,7 +556,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Initial Stock (शुरुआती स्टॉक)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(lang.stockLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<double>(
                           value: stockOptions.contains(_selectedStock) ? _selectedStock : stockOptions.first,
@@ -580,7 +587,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Low Stock Alert (कम स्टॉक)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Text(lang.lowStockLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<double>(
                           value: thresholdOptions.contains(_selectedThreshold) ? _selectedThreshold : thresholdOptions.first,
@@ -611,7 +618,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
               // SAVE BUTTON
               CustomButton(
-                text: "Save Product (सामान सेव करें)",
+                text: lang.saveProductButton,
                 isLoading: _isSaving,
                 onPressed: _handleSave,
               ),

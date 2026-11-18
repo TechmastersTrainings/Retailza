@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9A3412" />
+      <stop offset="50%" stop-color="#C2410C" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+
+    <!-- Accent Emerald Gradient for Profit / Growth -->
+    <linearGradient id="emeraldGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#15803D" />
+      <stop offset="100%" stop-color="#22C55E" />
+    </linearGradient>
+
+    <!-- Golden Amber Accent -->
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#431407" flood-opacity="0.35" />
+    </filter>
+
+    <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Modern App Squircle Background -->
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad)" filter="url(#dropShadow)" />
+
+  <!-- Subtle Store Awning / Canopy Overhead Curves -->
+  <path d="M 100 130 Q 150 155 200 130 Q 256 155 312 130 Q 362 155 412 130" 
+        fill="none" stroke="rgba(255, 255, 255, 0.18)" stroke-width="8" stroke-linecap="round" />
+
+  <!-- White Emblem Container (Geometric 'R' + Shopping Bag & Speed Tick) -->
+  <g filter="url(#innerGlow)">
+    <!-- Vertical Spine of the 'R' / Billing Counter -->
+    <rect x="144" y="148" width="48" height="216" rx="24" fill="#FFFFFF" />
+
+    <!-- Upper Loop of 'R' (Modern Curvature) -->
+    <path d="M 168 148 L 276 148 C 330 148 368 184 368 234 C 368 284 330 320 276 320 L 168 320 Z" 
+          fill="none" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Fast Dynamic Leg of the 'R' Transforming into Growth Arrow -->
+    <path d="M 252 296 L 338 404" 
+          fill="none" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round" />
+
+    <!-- Digital Payment / Khata Growth Spark in Sage Emerald -->
+    <circle cx="364" cy="180" r="26" fill="url(#emeraldGrad)" />
+
+    <!-- Lightning / Speed Chevrons (Billing in <3 seconds) -->
+    <path d="M 358 170 L 372 178 L 358 190" 
+          fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Subtle Golden Sparkle Accent -->
+    <circle cx="168" cy="148" r="10" fill="url(#amberGrad)" />
+  </g>
+
+  <!-- Subtle Base Rim Highlight -->
+  <rect x="24" y="24" width="464" height="464" rx="108" 
+        fill="none" stroke="rgba(255, 255, 255, 0.22)" stroke-width="4" />
+</svg>
+
