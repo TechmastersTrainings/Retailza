@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/custom_button.dart';
+import 'bulk_add_products_screen.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({Key? key}) : super(key: key);
@@ -186,6 +187,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
           "Add New Product (नया सामान)",
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.playlist_add_rounded, size: 24),
+            tooltip: "Bulk Product Upload (थोक जोड़ें)",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BulkAddProductsScreen()),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -194,6 +208,61 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Bulk Upload Quick Shortcut Banner
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BulkAddProductsScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.08),
+                        AppColors.upiPurple.withValues(alpha: 0.08),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Add 20+ Items in Bulk (थोक सामान जोड़ें)",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              "1-Click Popular Catalog or Excel / Word",
+                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+
               // Store Category Banner
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

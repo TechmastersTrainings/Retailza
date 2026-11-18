@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/shop_categories.dart';
+import '../providers/shop_provider.dart';
 import '../services/product_service.dart';
 import '../widgets/custom_button.dart';
 
@@ -253,32 +256,55 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
               style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
             const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _pickFile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.attach_file_rounded, size: 18),
-                  label: const Text("Choose File (फ़ाइल चुनें)", style: TextStyle(fontWeight: FontWeight.w700)),
+            // Primary Action: 1-Tap Load Ready-Made Catalog
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _loadPreconfiguredCatalog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 1,
                 ),
-                const SizedBox(width: 10),
+                icon: const Icon(Icons.bolt_rounded, size: 20, color: Colors.amberAccent),
+                label: Text(
+                  _fileFormat == "excel"
+                      ? "1-Tap Load Ready Excel Catalog (20 Items)"
+                      : "1-Tap Load Ready Word Catalog (20 Items)",
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Secondary Action: Browse file or View Guide
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickFile,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.cardBorder, width: 1.2),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.folder_open_rounded, size: 18, color: AppColors.primary),
+                    label: const Text("Browse from Phone", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: _showTemplateGuideDialog,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: AppColors.textSecondary,
                     side: const BorderSide(color: AppColors.cardBorder),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
-                  label: const Text("Sample", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                  icon: const Icon(Icons.help_outline_rounded, size: 16),
+                  label: const Text("Guide", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                 ),
               ],
             ),
@@ -806,16 +832,72 @@ class _BulkAddProductsScreenState extends State<BulkAddProductsScreen> with Sing
     );
   }
 
+  void _loadPreconfiguredCatalog() {
+    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+    final categoryId = shopProvider.shop?.category ?? ShopCategories.provisionStore;
+    final catInfo = ShopCategories.getCategoryById(categoryId);
+
+    final List<Map<String, dynamic>> items = catInfo.catalogPresets.map((p) {
+      return {
+        "name": p.name,
+        "selling_price": p.defaultSellingPrice,
+        "purchase_price": p.defaultPurchasePrice,
+        "stock": p.defaultStock,
+        "unit": p.defaultUnit,
+        "category": p.defaultCategory,
+        "barcode": null,
+        "is_valid": true,
+        "error_message": null,
+      };
+    }).toList();
+
+    final Set<int> validIndices = {for (int i = 0; i < items.length; i++) i};
+
+    setState(() {
+      _selectedFileName = _fileFormat == "excel"
+          ? "${catInfo.englishName.replaceAll(' ', '_')}_Excel_Catalog.xlsx"
+          : "${catInfo.englishName.replaceAll(' ', '_')}_Word_Catalog.docx";
+      _selectedFileSize = items.length * 128;
+      _parsedItems = items;
+      _selectedIndices = validIndices;
+      _totalRows = items.length;
+      _validCount = items.length;
+      _invalidCount = 0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Loaded ${items.length} popular items from ${catInfo.englishName} catalog!"),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _pickFile() async {
     try {
       final allowedExtensions = _fileFormat == "excel" ? ['xlsx', 'xls', 'csv'] : ['docx', 'doc'];
       final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: allowedExtensions,
+        type: FileType.any,
       );
 
       if (result.isNotEmpty) {
         final file = result.first;
+        final name = file.name.toLowerCase();
+        final isValidExt = allowedExtensions.any((ext) => name.endsWith(".$ext"));
+        if (!isValidExt) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Please select a valid ${_fileFormat == 'excel' ? 'Excel (.xlsx, .csv)' : 'Word (.docx)'} file.",
+              ),
+              backgroundColor: AppColors.debtRed,
+            ),
+          );
+          return;
+        }
+
         final bytes = await file.readAsBytes();
 
         if (bytes.isNotEmpty) {
