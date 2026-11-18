@@ -9,7 +9,7 @@ from backend.app.schemas import (
     CustomerCreate, CustomerUpdate, CustomerResponse,
     CustomerDetailResponse, CreditPaymentCreate, CreditTransactionResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 
 router = APIRouter(prefix="/customers", tags=["Customer Khata (Credit)"])
 
@@ -127,7 +127,8 @@ def update_customer(
     return CustomerResponse.model_validate(customer)
 
 
-@router.post("/{customer_id}/credit-payment", response_model=CustomerResponse)
+@router.post("/{customer_id}/credit-payment", response_model=CustomerResponse,
+             dependencies=[Depends(require_active_subscription)])
 def record_credit_payment(
     customer_id: int,
     payload: CreditPaymentCreate,
@@ -145,6 +146,14 @@ def record_credit_payment(
 
     if not customer:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+
+    # A payment cannot exceed what the customer owes; that would drive the khata
+    # balance negative (the shop "owing" the customer) and corrupt the ledger.
+    if payload.amount > customer.balance:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Payment (₹{payload.amount}) cannot exceed the outstanding balance (₹{customer.balance})."
+        )
 
     # Deduct balance
     customer.balance = customer.balance - payload.amount

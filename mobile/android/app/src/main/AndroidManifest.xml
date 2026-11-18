@@ -22,7 +22,7 @@
         android:label="Retailza"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
         
         <!-- Disable Impeller on emulator to prevent OpenGLES Width is zero deadlock -->
         <meta-data

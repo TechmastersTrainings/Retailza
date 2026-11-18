@@ -11,7 +11,7 @@ from backend.app.models import (
 from backend.app.schemas import (
     SaleCreate, SaleResponse, SaleItemResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 
 router = APIRouter(prefix="/sales", tags=["Billing & Sales Engine"])
 
@@ -47,7 +47,8 @@ def to_sale_response(sale: Sale) -> SaleResponse:
     )
 
 
-@router.post("/checkout", response_model=SaleResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/checkout", response_model=SaleResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_active_subscription)])
 def checkout_sale(
     payload: SaleCreate,
     shop: Shop = Depends(get_current_shop),

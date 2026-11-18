@@ -14,6 +14,11 @@ from backend.app.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail closed: refuse to run in production without a real JWT secret.
+    if settings.APP_ENV == "production" and not settings.SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY is not set. Configure it in the environment before starting in production."
+        )
     # Initialize database tables and columns on startup
     init_db()
     yield
@@ -26,11 +31,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for Flutter mobile client, web, and local development
+# CORS. The API authenticates with Bearer tokens (not cookies), so credentials
+# are disabled; that removes the unsafe "any origin + credentials" combination.
+# Origins are configurable via ALLOWED_ORIGINS (comma-separated, or "*").
+_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()] or ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

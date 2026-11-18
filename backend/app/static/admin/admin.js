@@ -667,7 +667,7 @@ async function loadAnnouncements() {
           <div style="font-weight: 600; color: var(--text-main); font-size: 13px;">${escapeHtml(item.title)}</div>
           <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${escapeHtml(item.message)}</div>
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-            Category: <strong style="color: var(--primary);">${item.tag}</strong> • Published ${new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            Category: <strong style="color: var(--primary);">${escapeHtml(item.tag)}</strong> • Published ${new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </div>
         </div>
         <button class="btn-action-outline" style="padding: 4px 10px; font-size: 11px;" onclick="deleteAnnouncement(${item.id})">

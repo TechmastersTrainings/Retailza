@@ -64,7 +64,14 @@ def get_current_shop(
 def require_active_subscription(
     shop: Shop = Depends(get_current_shop),
     db: Session = Depends(get_db)
-) -> Subscription:
+) -> Optional[Subscription]:
+    # Off by default: the paywall is not enforced server-side until the UPI
+    # gateway is deployed and ENFORCE_SUBSCRIPTION is turned on. This keeps the
+    # live app working for all shops in the meantime.
+    from backend.app.config import settings
+    if not settings.ENFORCE_SUBSCRIPTION:
+        return None
+
     sub = db.query(Subscription).filter(Subscription.shop_id == shop.id).first()
     now = datetime.utcnow()
 

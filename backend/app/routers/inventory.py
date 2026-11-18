@@ -7,13 +7,14 @@ from backend.app.models import Shop, Product, StockTransaction
 from backend.app.schemas import (
     StockAdjustment, StockTransactionResponse, ProductResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 from backend.app.routers.products import to_product_response
 
 router = APIRouter(prefix="/inventory", tags=["Inventory & Stock Audit"])
 
 
-@router.post("/{product_id}/restock", response_model=ProductResponse)
+@router.post("/{product_id}/restock", response_model=ProductResponse,
+             dependencies=[Depends(require_active_subscription)])
 def restock_product(
     product_id: int,
     quantity: Decimal = Query(..., gt=0, description="Quantity to add to inventory"),
@@ -46,7 +47,8 @@ def restock_product(
     return to_product_response(product)
 
 
-@router.post("/{product_id}/adjust", response_model=ProductResponse)
+@router.post("/{product_id}/adjust", response_model=ProductResponse,
+             dependencies=[Depends(require_active_subscription)])
 def adjust_inventory(
     product_id: int,
     payload: StockAdjustment,

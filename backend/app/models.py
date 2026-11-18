@@ -31,6 +31,8 @@ class OTPVerification(Base):
     otp_code = Column(String(10), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    attempts = Column(Integer, default=0, nullable=False)        # wrong verify guesses
+    request_count = Column(Integer, default=1, nullable=False)   # sends within this window
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 

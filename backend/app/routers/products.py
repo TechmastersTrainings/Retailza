@@ -9,7 +9,7 @@ from backend.app.schemas import (
     ProductCreate, ProductUpdate, ProductResponse,
     BulkProductItem, BulkProductUploadResponse, BulkProductCommitRequest, BulkProductCommitResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 from backend.app.utils.bulk_parser import (
     parse_excel_file, parse_csv_file, parse_word_file, validate_and_normalize_items
 )
@@ -204,7 +204,8 @@ async def upload_bulk_file(
     )
 
 
-@router.post("/bulk/commit", response_model=BulkProductCommitResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/bulk/commit", response_model=BulkProductCommitResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_active_subscription)])
 def commit_bulk_products(
     payload: BulkProductCommitRequest,
     shop: Shop = Depends(get_current_shop),
@@ -298,7 +299,8 @@ def get_product_detail(
     return to_product_response(product)
 
 
-@router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_active_subscription)])
 def create_product(
     payload: ProductCreate,
     shop: Shop = Depends(get_current_shop),

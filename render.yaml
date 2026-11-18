@@ -16,9 +16,10 @@ services:
       - key: APP_ENV
         value: production
       - key: DEBUG
-        value: "true"
+        value: "false"
+      # JWT signing key: set a strong random value in the Render dashboard.
       - key: SECRET_KEY
-        value: retailza_super_secret_jwt_key_kirana_saas_2026_production
+        sync: false
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "10080"
       - key: REFRESH_TOKEN_EXPIRE_DAYS
@@ -44,3 +45,17 @@ services:
         sync: false
       - key: SUBSCRIPTION_AMOUNT
         value: "49.00"
+      # Server-side paywall: turn on only after the UPI gateway is live.
+      - key: ENFORCE_SUBSCRIPTION
+        value: "false"
+      # Allowed browser origins for CORS (comma-separated, or * ). Mobile app is unaffected.
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      # One-time super-admin seed: set these in the Render dashboard, then you may
+      # clear SEED_ADMIN_PASSWORD. An existing admin is never overwritten.
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_MOBILE
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
