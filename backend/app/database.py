@@ -11,9 +11,10 @@ try:
 except ImportError:
     pass
 
-DATABASE_URL = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
 if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("TESTING"):
     DATABASE_URL = "sqlite:///:memory:"
+else:
+    DATABASE_URL = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
 connect_args = {}
 engine_kwargs = {"echo": False}
 

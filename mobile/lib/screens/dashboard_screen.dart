@@ -17,6 +17,7 @@ import 'bulk_add_products_screen.dart';
 import 'sales_history_screen.dart';
 import '../widgets/language_toggle_badge.dart';
 import '../providers/language_provider.dart';
+import '../widgets/store_lock_overlay.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -118,7 +119,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (isPro) ...[
+                      if (shopProvider.isAppLocked) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.debtRedLight,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.debtRed.withValues(alpha: 0.4), width: 0.8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.lock, size: 10, color: AppColors.debtRed),
+                              SizedBox(width: 2),
+                              Text(
+                                "LOCKED",
+                                style: TextStyle(
+                                  color: AppColors.debtRed,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (isPro) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -172,17 +198,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: _loadMetrics,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Broadcast Feature Announcement from Admin
-              if (_announcement != null && !_dismissAnnouncement) ...[
+      body: shopProvider.isAppLocked
+          ? const StoreLockOverlay()
+          : RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _loadMetrics,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 14-Day Free Trial Completed Reminder Banner (Days 15–29)
+                    if (shopProvider.shouldShow14DayReminder)
+                      TrialReminderBanner(daysRemaining: shopProvider.subscriptionDaysRemaining),
+
+                    // Broadcast Feature Announcement from Admin
+                    if (_announcement != null && !_dismissAnnouncement) ...[
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(

@@ -6,18 +6,20 @@ from backend.app.utils.security import hash_password
 
 @pytest.fixture
 def super_admin_user(db_session):
-    """Seed a default Super Admin account for testing."""
-    admin = User(
-        email="admin@retailza.com",
-        mobile_number="9999999999",
-        name="Retailza Super Admin",
-        role="SUPER_ADMIN",
-        hashed_password=hash_password("Admin@Retailza2026"),
-        is_active=True
-    )
-    db_session.add(admin)
-    db_session.commit()
-    db_session.refresh(admin)
+    """Seed or fetch a default Super Admin account for testing."""
+    admin = db_session.query(User).filter(User.email == "admin@retailza.com").first()
+    if not admin:
+        admin = User(
+            email="admin@retailza.com",
+            mobile_number="9999999999",
+            name="Retailza Super Admin",
+            role="SUPER_ADMIN",
+            hashed_password=hash_password("Admin@Retailza2026"),
+            is_active=True
+        )
+        db_session.add(admin)
+        db_session.commit()
+        db_session.refresh(admin)
     return admin
 
 

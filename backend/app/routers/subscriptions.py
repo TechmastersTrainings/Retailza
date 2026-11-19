@@ -36,12 +36,29 @@ def get_subscription(shop: Shop = Depends(get_current_shop), db: Session = Depen
 
     now = datetime.utcnow()
     # Check expiry
-    if sub.status == "ACTIVE" and sub.end_date and sub.end_date < now:
+    if sub.status == "ACTIVE" and sub.end_date and sub.end_date <= now:
         sub.status = "EXPIRED"
         db.commit()
         db.refresh(sub)
 
-    is_active = (sub.status == "ACTIVE" and sub.end_date and sub.end_date > now)
+    is_active = (sub.status == "ACTIVE" and sub.end_date is not None and sub.end_date > now)
+
+    start_dt = sub.start_date or sub.created_at or now
+    days_elapsed = max(0, (now - start_dt).days)
+    end_dt = sub.end_date or (start_dt + timedelta(days=30))
+    days_remaining = max(0, (end_dt - now).days) if end_dt > now else 0
+
+    # 14-day trial reminder: triggers when customer has completed 14 days of trial
+    trial_days_completed = (sub.plan_name == "trial" and days_elapsed >= 14)
+
+    # 30-day auto lock: triggers at 30th day or when subscription expired
+    is_locked = (not is_active) or (sub.status == "EXPIRED") or (now >= end_dt)
+    lock_reason = None
+    if is_locked:
+        if sub.plan_name == "trial":
+            lock_reason = "Your 30-day evaluation period has completed. Please make a payment of ₹49/month to unlock all features."
+        else:
+            lock_reason = "Your Retailza subscription has expired. Please renew for ₹49/month to unlock your store."
 
     return SubscriptionResponse(
         id=sub.id,
@@ -51,7 +68,12 @@ def get_subscription(shop: Shop = Depends(get_current_shop), db: Session = Depen
         status=sub.status,
         start_date=sub.start_date,
         end_date=sub.end_date,
-        is_active=bool(is_active)
+        is_active=bool(is_active and not is_locked),
+        trial_days_completed=bool(trial_days_completed),
+        days_remaining=int(days_remaining),
+        days_elapsed=int(days_elapsed),
+        is_locked=bool(is_locked),
+        lock_reason=lock_reason
     )
 
 
@@ -127,6 +149,7 @@ def verify_subscription_payment(
         sub.end_date = now + timedelta(days=30)
 
     sub.status = "ACTIVE"
+    sub.plan_name = "basic"
 
     # Record payment transaction
     payment_record = SubscriptionPayment(
@@ -143,6 +166,8 @@ def verify_subscription_payment(
     db.commit()
     db.refresh(sub)
 
+    rem_days = max(0, (sub.end_date - now).days) if sub.end_date and sub.end_date > now else 30
+
     return SubscriptionResponse(
         id=sub.id,
         shop_id=sub.shop_id,
@@ -151,7 +176,12 @@ def verify_subscription_payment(
         status=sub.status,
         start_date=sub.start_date,
         end_date=sub.end_date,
-        is_active=True
+        is_active=True,
+        trial_days_completed=False,
+        days_remaining=int(rem_days),
+        days_elapsed=0,
+        is_locked=False,
+        lock_reason=None
     )
 
 

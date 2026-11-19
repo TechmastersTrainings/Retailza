@@ -28,6 +28,7 @@ engine = create_engine(
 )
 db_module.engine = engine
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+db_module.SessionLocal = TestingSessionLocal
 
 
 @pytest.fixture(scope="function")

@@ -136,6 +136,11 @@ class SubscriptionResponse(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     is_active: bool = False
+    trial_days_completed: bool = False
+    days_remaining: int = 0
+    days_elapsed: int = 0
+    is_locked: bool = False
+    lock_reason: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

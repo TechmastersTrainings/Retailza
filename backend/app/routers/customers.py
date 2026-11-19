@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from backend.app.database import get_db
-from backend.app.models import Shop, Customer, CreditTransaction
+from backend.app.models import Shop, Customer, CreditTransaction, Subscription
 from backend.app.schemas import (
     CustomerCreate, CustomerUpdate, CustomerResponse,
     CustomerDetailResponse, CreditPaymentCreate, CreditTransactionResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 
 router = APIRouter(prefix="/customers", tags=["Customer Khata (Credit)"])
 
@@ -44,7 +44,8 @@ def get_customers(
 def create_customer(
     payload: CustomerCreate,
     shop: Shop = Depends(get_current_shop),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _sub: Subscription = Depends(require_active_subscription)
 ):
     """Add a new customer to the shop's Khata ledger."""
     customer = Customer(
@@ -132,7 +133,8 @@ def record_credit_payment(
     customer_id: int,
     payload: CreditPaymentCreate,
     shop: Shop = Depends(get_current_shop),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _sub: Subscription = Depends(require_active_subscription)
 ):
     """
     Record payment received from a customer settling their khata debt.

@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from backend.app.database import get_db
-from backend.app.models import Shop, Product, StockTransaction
+from backend.app.models import Shop, Product, StockTransaction, Subscription
 from backend.app.schemas import (
     ProductCreate, ProductUpdate, ProductResponse,
     BulkProductItem, BulkProductUploadResponse, BulkProductCommitRequest, BulkProductCommitResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 from backend.app.utils.bulk_parser import (
     parse_excel_file, parse_csv_file, parse_word_file, validate_and_normalize_items
 )
@@ -208,7 +208,8 @@ async def upload_bulk_file(
 def commit_bulk_products(
     payload: BulkProductCommitRequest,
     shop: Shop = Depends(get_current_shop),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _sub: Subscription = Depends(require_active_subscription)
 ):
     """
     Commit validated bulk items to the shop's catalog.
@@ -302,7 +303,8 @@ def get_product_detail(
 def create_product(
     payload: ProductCreate,
     shop: Shop = Depends(get_current_shop),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _sub: Subscription = Depends(require_active_subscription)
 ):
     """Create a new product with decimal stock quantities and purchase/selling prices."""
     # Check barcode uniqueness if provided

@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from backend.app.database import get_db
 from backend.app.models import (
-    Shop, Product, Sale, SaleItem, Customer, CreditTransaction, StockTransaction
+    Shop, Product, Sale, SaleItem, Customer, CreditTransaction, StockTransaction, Subscription
 )
 from backend.app.schemas import (
     SaleCreate, SaleResponse, SaleItemResponse
 )
-from backend.app.dependencies import get_current_shop
+from backend.app.dependencies import get_current_shop, require_active_subscription
 
 router = APIRouter(prefix="/sales", tags=["Billing & Sales Engine"])
 
@@ -51,7 +51,8 @@ def to_sale_response(sale: Sale) -> SaleResponse:
 def checkout_sale(
     payload: SaleCreate,
     shop: Shop = Depends(get_current_shop),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _sub: Subscription = Depends(require_active_subscription)
 ):
     """
     Atomic Kirana Billing Checkout:

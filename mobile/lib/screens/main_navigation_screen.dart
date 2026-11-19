@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../providers/cart_provider.dart';
+import '../providers/shop_provider.dart';
 import 'dashboard_screen.dart';
 import 'new_sale_screen.dart';
 import 'product_list_screen.dart';
@@ -111,10 +112,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     int badgeCount = 0,
   }) {
     final isSelected = _currentIndex == index;
+    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
 
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () {
+          if (shopProvider.isAppLocked && (index == 1 || index == 2 || index == 3)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Store features locked. Please pay ₹49/month subscription on the Home screen to unlock billing & stock.",
+                ),
+                backgroundColor: AppColors.debtRed,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            setState(() => _currentIndex = 0);
+            return;
+          }
+          setState(() => _currentIndex = index);
+        },
         borderRadius: BorderRadius.circular(14),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
