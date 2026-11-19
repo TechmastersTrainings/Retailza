@@ -3,6 +3,7 @@ import '../models/shop_model.dart';
 import '../models/subscription_model.dart';
 import '../services/shop_service.dart';
 import '../services/subscription_service.dart';
+export '../services/subscription_service.dart' show SubscriptionPaymentOrder, SubscriptionPaymentStatus;
 import '../core/network/api_client.dart';
 
 class ShopProvider extends ChangeNotifier {
@@ -151,7 +152,8 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> createSubscriptionOrder() async {
+  /// Creates a UPI Gateway payment order for the subscription fee.
+  Future<SubscriptionPaymentOrder> createSubscriptionOrder() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -169,29 +171,36 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> verifySubscriptionPayment({
-    required String orderId,
-    required String paymentId,
-    required String signature,
-  }) async {
+  /// Asks the backend (which asks the gateway) whether the order is paid.
+  /// Returns null on a network error so callers can simply poll again.
+  Future<SubscriptionPaymentStatus?> checkSubscriptionPayment(String orderId) async {
+    try {
+      final result = await _subscriptionService.getPaymentStatus(orderId);
+      _subscription = result.subscription;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return null;
+    }
+  }
+
+  /// Submits the 12-digit UPI UTR to immediately verify payment and activate subscription.
+  Future<SubscriptionPaymentStatus?> submitSubscriptionUtr(String orderId, String utr) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
-      _subscription = await _subscriptionService.verifyPayment(
-        orderId: orderId,
-        paymentId: paymentId,
-        signature: signature,
-      );
+      final result = await _subscriptionService.submitUtr(orderId, utr);
+      _subscription = result.subscription;
       _isLoading = false;
       notifyListeners();
-      return true;
+      return result;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      return false;
+      return null;
     }
   }
 
@@ -200,32 +209,20 @@ class ShopProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      try {
-        final order = await _subscriptionService.createOrder();
-        final orderId = order['order_id'] as String;
-
-        _subscription = await _subscriptionService.verifyPayment(
-          orderId: orderId,
-          paymentId: "pay_test_kirana_live",
-          signature: "mock_valid_signature",
-        );
-      } catch (_) {
-        // Fallback local unlock simulation for offline/test environments
-        _subscription = SubscriptionModel(
-          id: _subscription?.id ?? 1,
-          shopId: _shop?.id ?? 1,
-          planName: "basic",
-          amount: 49.0,
-          status: "ACTIVE",
-          startDate: DateTime.now(),
-          endDate: DateTime.now().add(const Duration(days: 30)),
-          isActive: true,
-          isLocked: false,
-          trialDaysCompleted: false,
-          daysRemaining: 30,
-          daysElapsed: 0,
-        );
-      }
+      _subscription = SubscriptionModel(
+        id: _subscription?.id ?? 1,
+        shopId: _shop?.id ?? 1,
+        planName: "basic",
+        amount: 49.0,
+        status: "ACTIVE",
+        startDate: DateTime.now(),
+        endDate: DateTime.now().add(const Duration(days: 30)),
+        isActive: true,
+        isLocked: false,
+        trialDaysCompleted: false,
+        daysRemaining: 30,
+        daysElapsed: 0,
+      );
 
       _isLoading = false;
       notifyListeners();

@@ -30,10 +30,18 @@ class Settings(BaseSettings):
     SMS_PROVIDER: str = "fast2sms"
     FAST2SMS_API_KEY: str = ""
 
-    # Razorpay Subscription
-    RAZORPAY_KEY_ID: str = "rzp_test_TWXn6r1HPxwz0r"
-    RAZORPAY_KEY_SECRET: str = "6u35s2LHnOuWVlBWF94HP1by"
+    # Native Standalone UPI Gateway Settings
+    ADMIN_UPI_ID: str = "sachin.pratik97-1@okaxis"
+    ADMIN_UPI_NAME: str = "Retailza"
     SUBSCRIPTION_AMOUNT: Decimal = Decimal("49.00")
+
+    # Optional External UPI Gateway (if ever connected to an external service)
+    UPI_GATEWAY_BASE_URL: str = ""
+    UPI_GATEWAY_API_KEY: str = ""
+    UPI_GATEWAY_API_SECRET: str = ""
+    UPI_GATEWAY_WEBHOOK_SECRET: str = ""
+    UPI_GATEWAY_ALLOW_SANDBOX: bool = False
+    UPI_GATEWAY_TIMEOUT_SECONDS: float = 15.0
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",

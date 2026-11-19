@@ -116,6 +116,15 @@
           </svg>
           <span>Announcements</span>
         </button>
+
+        <button class="nav-tab-item" id="tabBtn-payments" onclick="switchTab('payments')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <line x1="2" y1="10" x2="22" y2="10"/>
+          </svg>
+          <span>UPI Collections</span>
+          <span class="tab-badge-counter" id="tabPaymentsCount">0</span>
+        </button>
       </div>
 
       <div class="nav-search-shortcut">
@@ -414,6 +423,47 @@
           <div id="announcementsHistoryList">
             <div class="table-state-cell">Loading announcements...</div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: UPI COLLECTIONS -->
+    <section class="tab-pane" id="tab-payments" style="display: none;">
+      <div class="page-header-row">
+        <div>
+          <h1 class="page-title">UPI Direct Collections</h1>
+          <p class="page-subtitle">Incoming ₹49.00 SaaS subscription payments received directly on UPI (sachin.pratik97-1@okaxis).</p>
+        </div>
+        <div class="page-actions-group">
+          <button class="btn-action-outline" onclick="loadPayments()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="glass-panel-card" style="margin-top: 16px;">
+        <div class="table-responsive-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>DATE &amp; TIME</th>
+                <th>STORE &amp; OWNER</th>
+                <th>MOBILE</th>
+                <th>AMOUNT</th>
+                <th>UPI REF / UTR</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="paymentsTableBody">
+              <tr>
+                <td colspan="6" class="table-state-cell">Loading UPI payments...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

@@ -63,7 +63,8 @@ class ApiConstants {
   // Subscription endpoints
   static const String currentSubscription = "/subscriptions/current";
   static const String createSubscriptionOrder = "/subscriptions/create-order";
-  static const String verifySubscriptionPayment = "/subscriptions/verify-payment";
+  static String subscriptionPaymentStatus(String orderId) =>
+      "/subscriptions/payments/${Uri.encodeComponent(orderId)}/status";
 
   // Products & Catalog
   static const String products = "/products";
